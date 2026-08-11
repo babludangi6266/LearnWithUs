@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+package-lock.json
+
+# Environment Variables & Credentials
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+
+# Build & Dist Artifacts
+/Frontend/dist/
+/Frontend/.next/
+/Frontend/build/
+/LearnWithUs/dist/
+
+# Logs & Temporary Files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# System & IDE Files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Babel & Cache
+.babelrc.cache
+.cache/
