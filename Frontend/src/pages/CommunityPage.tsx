@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { apiService, CommunityItem } from '@/services/api';
+import { apiService, CommunityItem, Proposal } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { 
   Users, 
@@ -9,18 +9,17 @@ import {
   Plus, 
   ThumbsUp, 
   Search, 
-  Tag, 
   Mail, 
   X, 
   Send, 
   CheckCircle2, 
-  ShieldAlert,
   Clock,
   DollarSign,
   Server,
-  Loader2,
-  Sparkles,
-  Zap
+  Zap,
+  FileText,
+  Eye,
+  Check
 } from 'lucide-react';
 
 export default function CommunityPage() {
@@ -41,6 +40,16 @@ export default function CommunityPage() {
   const [contactInfo, setContactInfo] = useState(user?.email || '');
   const [budget, setBudget] = useState('$1,000 - $3,000');
   const [severity, setSeverity] = useState<'Low' | 'Medium' | 'High' | 'Critical'>('Medium');
+
+  // Proposal & Bidding States
+  const [selectedGigForProposal, setSelectedGigForProposal] = useState<CommunityItem | null>(null);
+  const [proposalText, setProposalText] = useState('');
+  const [bidAmount, setBidAmount] = useState('$2,500 USD');
+  const [isSubmittingProposal, setIsSubmittingProposal] = useState(false);
+
+  // View Proposals Drawer State
+  const [selectedGigForViewProposals, setSelectedGigForViewProposals] = useState<CommunityItem | null>(null);
+  const [proposalsList, setProposalsList] = useState<Proposal[]>([]);
 
   // Server Warmup Loader State
   const [submitting, setSubmitting] = useState(false);
@@ -73,6 +82,49 @@ export default function CommunityPage() {
     }
   };
 
+  const handleUpdateStatus = async (id: string, newStatus: string) => {
+    try {
+      await apiService.updateGigStatus(id, newStatus);
+      setItems(prev => prev.map(item => item._id === id ? { ...item, status: newStatus } : item));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleSubmitProposalForm = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedGigForProposal || !proposalText.trim()) return;
+
+    setIsSubmittingProposal(true);
+    try {
+      await apiService.submitProposal(selectedGigForProposal._id, {
+        freelancerName: user?.name || user?.email || 'Freelancer',
+        freelancerEmail: user?.email || 'dev@freelance.io',
+        proposalText,
+        bidAmount
+      });
+
+      setSelectedGigForProposal(null);
+      setProposalText('');
+      setNotification('Proposal submitted successfully to the job poster!');
+      setTimeout(() => setNotification(null), 4000);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmittingProposal(false);
+    }
+  };
+
+  const handleOpenProposalsDrawer = async (gig: CommunityItem) => {
+    setSelectedGigForViewProposals(gig);
+    try {
+      const list = await apiService.getProposalsForGig(gig._id);
+      setProposalsList(list);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !description.trim() || !contactInfo.trim()) return;
@@ -81,7 +133,6 @@ export default function CommunityPage() {
     setWarmupProgress(20);
     setWarmupStage('Spinning up backend container on Render...');
 
-    // Progress simulation while Render warms up
     const interval = setInterval(() => {
       setWarmupProgress(prev => {
         if (prev < 45) {
@@ -158,7 +209,7 @@ export default function CommunityPage() {
             Developer <span className="gradient-text-indigo-cyan">Community Hub</span>
           </h1>
           <p className="text-sm text-slate-400 mt-1 max-w-xl font-light">
-            Share tech ideas, hire freelance talent, collaborate on open projects, and report critical technical outages.
+            Share tech ideas, hire freelance talent, submit project proposals, and report critical technical outages.
           </p>
         </div>
 
@@ -224,7 +275,7 @@ export default function CommunityPage() {
       {/* Community Items List - Fluid 3 Column Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredItems.length === 0 ? (
-          <div className="lg:col-span-2 glass-card rounded-3xl p-12 text-center text-slate-500 space-y-3">
+          <div className="lg:col-span-3 glass-card rounded-3xl p-12 text-center text-slate-500 space-y-3">
             <Users className="w-12 h-12 text-slate-600 mx-auto" />
             <h3 className="text-base font-bold text-slate-300 font-heading">No community posts found</h3>
             <p className="text-xs text-slate-400 max-w-sm mx-auto">
@@ -253,9 +304,20 @@ export default function CommunityPage() {
                       }`}>
                         {isIdea ? '💡 Tech Idea' : isFreelance ? '💼 Freelance Gig' : '🚨 Incident Report'}
                       </span>
-                      <span className="text-xs text-slate-400 font-mono">
-                        {item.category}
-                      </span>
+
+                      {/* Milestone Status Picker for Gigs */}
+                      {isFreelance && (
+                        <select
+                          value={item.status || 'Open'}
+                          onChange={(e) => handleUpdateStatus(item._id, e.target.value)}
+                          className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-900 border border-white/10 text-cyan-300"
+                        >
+                          <option value="Open">Status: Open</option>
+                          <option value="In-Progress">Status: In-Progress</option>
+                          <option value="Delivered">Status: Delivered</option>
+                          <option value="Closed">Status: Closed</option>
+                        </select>
+                      )}
                     </div>
 
                     {isIncident && item.severity && (
@@ -301,29 +363,39 @@ export default function CommunityPage() {
                 </div>
 
                 {/* Footer Controls */}
-                <div className="pt-4 border-t border-white/10 flex items-center justify-between gap-4">
-                  <div className="text-[11px] text-slate-400 font-mono">
-                    By <span className="text-slate-200 font-medium">{item.author}</span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <a
-                      href={`mailto:${item.contactInfo}`}
-                      className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 text-xs font-mono flex items-center gap-1.5 transition-colors"
-                      title={`Contact: ${item.contactInfo}`}
-                    >
-                      <Mail className="w-3.5 h-3.5 text-cyan-400" />
-                      <span>Contact</span>
-                    </a>
-
+                <div className="pt-4 border-t border-white/10 flex flex-col space-y-3">
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                    <span>By <strong className="text-slate-200">{item.author}</strong></span>
                     <button
                       onClick={() => handleUpvote(item._id)}
-                      className="px-3.5 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/40 text-xs font-mono font-bold transition-all flex items-center gap-1.5"
+                      className="px-3 py-1 rounded-xl bg-indigo-600/20 text-indigo-300 border border-indigo-500/40 text-xs font-mono font-bold flex items-center gap-1"
                     >
-                      <ThumbsUp className="w-3.5 h-3.5 text-indigo-400" />
+                      <ThumbsUp className="w-3 h-3 text-indigo-400" />
                       <span>{item.upvotes}</span>
                     </button>
                   </div>
+
+                  {/* Freelance Bidding Action Buttons */}
+                  {isFreelance && (
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        onClick={() => setSelectedGigForProposal(item)}
+                        className="flex-1 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold text-xs shadow-sm flex items-center justify-center gap-1"
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        <span>Submit Proposal</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleOpenProposalsDrawer(item)}
+                        className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-white/10 text-slate-300 text-xs font-mono flex items-center gap-1"
+                        title="View Bids"
+                      >
+                        <Eye className="w-3.5 h-3.5 text-cyan-400" />
+                        <span>Bids</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -331,13 +403,96 @@ export default function CommunityPage() {
         )}
       </div>
 
-      {/* SUBMISSION MODAL - RESPONSIVE SCROLLABLE LAYOUT */}
+      {/* 📝 SUBMIT PROPOSAL MODAL */}
+      {selectedGigForProposal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+          <div className="glass-card rounded-3xl p-6 sm:p-8 max-w-lg w-full border border-emerald-500/40 space-y-6 relative">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div>
+                <span className="text-[10px] font-mono text-emerald-400 uppercase font-bold">Freelance Proposal</span>
+                <h3 className="text-lg font-bold text-white font-heading">{selectedGigForProposal.title}</h3>
+              </div>
+              <button onClick={() => setSelectedGigForProposal(null)} className="p-2 rounded-xl hover:bg-white/10 text-slate-400">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitProposalForm} className="space-y-4">
+              <div>
+                <label className="block text-[11px] font-mono text-slate-400 mb-1">Your Proposed Bid ($USD)</label>
+                <input
+                  type="text"
+                  required
+                  value={bidAmount}
+                  onChange={(e) => setBidAmount(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl glass-input text-xs font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-mono text-slate-400 mb-1">Proposal & Cover Letter</label>
+                <textarea
+                  required
+                  rows={4}
+                  value={proposalText}
+                  onChange={(e) => setProposalText(e.target.value)}
+                  placeholder="Describe your relevant experience, technical approach, and deliverables timeline..."
+                  className="w-full p-3.5 rounded-xl glass-input text-xs"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmittingProposal}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-white font-bold text-xs shadow-neon-indigo flex items-center justify-center gap-2"
+              >
+                <Send className="w-4 h-4" />
+                <span>Submit Proposal & Rate</span>
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 👁️ VIEW PROPOSALS DRAWER MODAL */}
+      {selectedGigForViewProposals && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+          <div className="glass-card rounded-3xl p-6 sm:p-8 max-w-xl w-full border border-cyan-500/40 space-y-6 relative max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4 shrink-0">
+              <div>
+                <span className="text-[10px] font-mono text-cyan-400 uppercase font-bold">Proposals & Bids Board</span>
+                <h3 className="text-lg font-bold text-white font-heading">{selectedGigForViewProposals.title}</h3>
+              </div>
+              <button onClick={() => setSelectedGigForViewProposals(null)} className="p-2 rounded-xl hover:bg-white/10 text-slate-400">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto space-y-3 flex-1 pr-1">
+              {proposalsList.length === 0 ? (
+                <div className="text-center py-8 text-xs text-slate-400">No proposals submitted for this gig yet.</div>
+              ) : (
+                proposalsList.map((p) => (
+                  <div key={p._id} className="p-4 rounded-2xl bg-slate-900 border border-white/10 space-y-2">
+                    <div className="flex items-center justify-between text-xs font-mono">
+                      <strong className="text-white">{p.freelancerName} ({p.freelancerEmail})</strong>
+                      <span className="text-emerald-400 font-bold">{p.bidAmount}</span>
+                    </div>
+                    <p className="text-xs text-slate-300 font-sans leading-relaxed">{p.proposalText}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SUBMISSION MODAL */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto">
           <div className="glass-card rounded-3xl p-6 sm:p-8 max-w-xl w-full max-h-[90vh] flex flex-col border border-indigo-500/30 relative overflow-hidden shadow-2xl my-auto">
             <div className="glow-point-indigo -top-20 -right-20 opacity-30" />
 
-            {/* Header */}
             <div className="flex items-center justify-between border-b border-white/10 pb-4 shrink-0">
               <h2 className="text-xl font-bold text-white font-heading flex items-center gap-2">
                 <Plus className="w-5 h-5 text-cyan-400" />
@@ -351,10 +506,7 @@ export default function CommunityPage() {
               </button>
             </div>
 
-            {/* Scrollable Form Body */}
             <form onSubmit={handleCreatePost} className="flex-1 overflow-y-auto pr-1 py-4 space-y-4">
-              
-              {/* Type Selector */}
               <div>
                 <label className="block text-[11px] font-mono text-slate-400 mb-1.5 uppercase">Submission Category</label>
                 <div className="grid grid-cols-3 gap-2">
@@ -379,7 +531,6 @@ export default function CommunityPage() {
                 </div>
               </div>
 
-              {/* Title Input */}
               <div>
                 <label className="block text-[11px] font-mono text-slate-400 mb-1 uppercase">Title</label>
                 <input
@@ -421,7 +572,6 @@ export default function CommunityPage() {
                 </div>
               </div>
 
-              {/* Freelance Specific Field */}
               {formType === 'freelance' && (
                 <div>
                   <label className="block text-[11px] font-mono text-slate-400 mb-1 uppercase">Budget / Reward Range</label>
@@ -435,7 +585,6 @@ export default function CommunityPage() {
                 </div>
               )}
 
-              {/* Incident Specific Field */}
               {formType === 'incident' && (
                 <div>
                   <label className="block text-[11px] font-mono text-slate-400 mb-1 uppercase">Severity Level</label>
@@ -452,7 +601,6 @@ export default function CommunityPage() {
                 </div>
               )}
 
-              {/* Tech Stack Input */}
               <div>
                 <label className="block text-[11px] font-mono text-slate-400 mb-1 uppercase">Tech Stack (comma separated)</label>
                 <input
@@ -464,7 +612,6 @@ export default function CommunityPage() {
                 />
               </div>
 
-              {/* Description */}
               <div>
                 <label className="block text-[11px] font-mono text-slate-400 mb-1 uppercase">Description & Details</label>
                 <textarea
@@ -477,7 +624,6 @@ export default function CommunityPage() {
                 />
               </div>
 
-              {/* STICKY VISIBLE SUBMIT BUTTON AT BOTTOM */}
               <div className="pt-2 shrink-0">
                 <button
                   type="submit"
@@ -499,14 +645,12 @@ export default function CommunityPage() {
           <div className="glass-card rounded-3xl p-8 sm:p-10 max-w-md w-full border border-indigo-500/40 text-center space-y-6 shadow-2xl relative overflow-hidden">
             <div className="glow-point-indigo -top-20 -right-20 opacity-40" />
 
-            {/* Glowing Spinning Core */}
             <div className="relative w-20 h-20 mx-auto flex items-center justify-center">
               <div className="absolute inset-0 rounded-full border-2 border-indigo-500/30 border-t-cyan-400 animate-spin" />
               <div className="absolute inset-2 rounded-full border-2 border-purple-500/20 border-b-indigo-400 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '2s' }} />
               <Server className="w-8 h-8 text-cyan-400 animate-pulse" />
             </div>
 
-            {/* Status Messages */}
             <div className="space-y-2">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/40 text-indigo-300 text-[11px] font-mono">
                 <Zap className="w-3.5 h-3.5 text-cyan-400 animate-spin" />
@@ -520,7 +664,6 @@ export default function CommunityPage() {
               </p>
             </div>
 
-            {/* Animated Progress Bar */}
             <div className="space-y-1.5">
               <div className="w-full h-2 rounded-full bg-slate-900 overflow-hidden p-0.5 border border-white/10">
                 <div
@@ -534,7 +677,6 @@ export default function CommunityPage() {
               </div>
             </div>
 
-            {/* Helpful Notice Box */}
             <div className="p-3.5 rounded-xl bg-slate-900/80 border border-white/10 text-[11px] text-slate-400 leading-relaxed font-mono text-left space-y-1">
               <div className="text-amber-400 font-bold flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5" /> Render Cold Start Note:

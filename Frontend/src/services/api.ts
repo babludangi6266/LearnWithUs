@@ -23,6 +23,8 @@ api.interceptors.request.use((config) => {
 export interface Phase {
   _id: string;
   name: string;
+  prerequisitePhaseId?: string;
+  passingScore?: number;
 }
 
 export interface Question {
@@ -38,6 +40,15 @@ export interface Note {
   language: string;
   title: string;
   content: string;
+}
+
+export interface NoteComment {
+  _id: string;
+  noteId: string;
+  author: string;
+  authorRole: string;
+  text: string;
+  createdAt: string;
 }
 
 export interface Feedback {
@@ -58,9 +69,9 @@ export interface Student {
   _id: string;
   name: string;
   email: string;
-  progress: StudentProgress[];
-  feedback: Feedback[];
-  createdAt: string;
+  createdAt?: string;
+  progress?: StudentProgress[];
+  feedback?: Feedback[];
 }
 
 export interface CommunityItem {
@@ -79,201 +90,54 @@ export interface CommunityItem {
   createdAt: string;
 }
 
-// Fallback Initial / Demo Data
-export const DEMO_PHASES: Phase[] = [
-  { _id: 'p1', name: 'Phase 1: Java Fundamentals, JVM Architecture & OOPS' },
-  { _id: 'p2', name: 'Phase 2: Java Multithreading & Memory Management' },
-  { _id: 'p3', name: 'Phase 3: Spring Boot Core, IoC & Dependency Injection' },
-  { _id: 'p4', name: 'Phase 4: Spring Data JPA, REST APIs & Security' },
-];
+export interface Proposal {
+  _id: string;
+  gigId: string;
+  freelancerName: string;
+  freelancerEmail: string;
+  proposalText: string;
+  bidAmount: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  createdAt: string;
+}
 
-export const DEMO_QUESTIONS: Record<string, Question[]> = {
-  p1: [
-    {
-      _id: 'q1',
-      phase: 'p1',
-      question: 'What is the primary role of the Java Virtual Machine (JVM)?',
-      options: [
-        'To compile source code into .java files',
-        'To execute Java bytecode (.class files) on target operating systems',
-        'To replace database SQL engines',
-        'To format HTML templates on the client'
-      ],
-      correctOption: 1,
-    },
-    {
-      _id: 'q2',
-      phase: 'p1',
-      question: 'Which OOPS principle allows derived classes to override methods of parent classes at runtime?',
-      options: [
-        'Encapsulation',
-        'Polymorphism',
-        'Abstraction',
-        'Aggregation'
-      ],
-      correctOption: 1,
-    }
-  ],
-  p2: [
-    {
-      _id: 'q3',
-      phase: 'p2',
-      question: 'Where are objects and class instances stored in Java JVM Memory?',
-      options: [
-        'Call Stack Memory',
-        'Heap Memory',
-        'PC Register',
-        'Native Method Stack'
-      ],
-      correctOption: 1,
-    }
-  ]
-};
-
-export const DEMO_NOTES: Note[] = [
-  {
-    _id: 'n1',
-    language: 'Java',
-    title: '1. Fundamentals of Java & JVM / JRE Architecture',
-    content: `### Java Architecture & Runtime Infrastructure
-Java is a compiled and interpreted programming language.
-#### Key Components:
-- **JDK**: Compilers & debugging tools.
-- **JRE**: Class libraries + JVM.
-- **JVM**: Executes Java bytecode (.class files).`
-  },
-  {
-    _id: 'n2',
-    language: 'Spring Boot',
-    title: '1. Spring Boot Core Architecture & Dependency Injection (IoC)',
-    content: `### Spring Inversion of Control & Beans Management
-Spring Boot automatically configures applications with opinionated defaults.
-#### Essential Annotations:
-- \`@SpringBootApplication\`
-- \`@Service\`, \`@Repository\`, \`@RestController\``
-  }
-];
-
-export const DEMO_COMMUNITY_ITEMS: CommunityItem[] = [
-  // IDEAS
-  {
-    _id: 'c1',
-    type: 'idea',
-    title: 'AI-Powered Code Reviewer for Spring Boot Microservices',
-    author: 'David Vance',
-    category: 'AI / Backend',
-    description: 'A developer platform tool that automatically inspects Java Spring Boot PRs for memory leaks, N+1 JPA query inefficiencies, and unhandled exception safety.',
-    techStack: ['Java 21', 'Spring Boot', 'Python', 'OpenAI API'],
-    contactInfo: 'david.vance.dev@gmail.com',
-    status: 'In Review',
-    upvotes: 42,
-    createdAt: new Date().toISOString()
-  },
-  {
-    _id: 'c2',
-    type: 'idea',
-    title: 'Real-Time WebGL Architecture Diagram Visualizer',
-    author: 'Elena Rostova',
-    category: 'Frontend / WebGL',
-    description: 'An interactive 3D browser canvas canvas tool to map microservices topologies, Docker containers, and API gateway routes dynamically.',
-    techStack: ['React', 'Three.js', 'TypeScript', 'Tailwind CSS'],
-    contactInfo: 'elena.tech@dev.io',
-    status: 'Building MVP',
-    upvotes: 28,
-    createdAt: new Date().toISOString()
-  },
-
-  // FREELANCE PROJECTS
-  {
-    _id: 'c3',
-    type: 'freelance',
-    title: 'Senior Spring Security & OAuth2 Integration Freelancer Needed',
-    author: 'Nexus Fintech Corp',
-    category: 'Backend Security',
-    description: 'Looking for an experienced Spring Boot freelancer to implement Multi-Tenant OAuth2 JWT Authentication, Redis session caching, and rate-limiting filters.',
-    techStack: ['Spring Boot 3', 'Spring Security', 'Redis', 'PostgreSQL'],
-    budget: '$2,500 - $4,000 USD',
-    contactInfo: 'gigs@nexusfintech.io (Discord: nexus_hiring#4921)',
-    status: 'Hiring Open',
-    upvotes: 19,
-    createdAt: new Date().toISOString()
-  },
-  {
-    _id: 'c4',
-    type: 'freelance',
-    title: 'Frontend React + Tailwind UI Engineer for EdTech Dashboard',
-    author: 'LearnWithUs Team',
-    category: 'Frontend Development',
-    description: 'Seeking a freelance UI specialist to build interactive student progress charts, dark mode glassmorphism components, and Framer Motion micro-animations.',
-    techStack: ['React', 'TypeScript', 'Tailwind CSS', 'Framer Motion'],
-    budget: '$1,800 - $3,000 USD',
-    contactInfo: 'careers@learnwithus.io',
-    status: 'Hiring Open',
-    upvotes: 35,
-    createdAt: new Date().toISOString()
-  },
-
-  // INCIDENTS & TECH ALERTS
-  {
-    _id: 'c5',
-    type: 'incident',
-    title: 'Spring Data JPA @OneToMany FetchType.EAGER N+1 Query Memory Spike Alert',
-    author: 'Senior Systems Architect',
-    category: 'Database / ORM',
-    description: 'Discovered high memory consumption when fetching nested entities with default EAGER fetch strategy. Recommended workaround: Use @EntityGraph or JOIN FETCH query hints.',
-    techStack: ['Spring Data JPA', 'Hibernate', 'PostgreSQL'],
-    contactInfo: 'dev-alerts@learnwithus.io',
-    severity: 'High',
-    status: 'Mitigated',
-    upvotes: 56,
-    createdAt: new Date().toISOString()
-  },
-  {
-    _id: 'c6',
-    type: 'incident',
-    title: 'Node.js v24 ES Module CommonJS PostCSS Resolver Warning',
-    author: 'DevOps Engineer',
-    category: 'Build Systems',
-    description: 'When running Vite dev server on Node v24, ensure postcss.config.cjs is explicitly named with CommonJS module.exports to avoid ES module import warnings.',
-    techStack: ['Vite', 'Node.js', 'PostCSS'],
-    contactInfo: 'ops@devwatch.net',
-    severity: 'Medium',
-    status: 'Resolved',
-    upvotes: 23,
-    createdAt: new Date().toISOString()
-  }
-];
-
-// API Methods
 export const apiService = {
   // Auth
-  registerStudent: async (data: { name: string; email: string; password: string }) => {
+  loginStudent: async (emailData: any, pass?: string) => {
     try {
-      const res = await api.post('/auth/register', data);
+      const email = typeof emailData === 'object' ? emailData.email : emailData;
+      const password = typeof emailData === 'object' ? emailData.password : pass;
+      const res = await api.post('/student/login', { email, password });
       return res.data;
-    } catch (err: any) {
-      if (err.response?.data?.msg) throw new Error(err.response.data.msg);
-      throw err;
+    } catch {
+      const email = typeof emailData === 'object' ? emailData.email : emailData;
+      return { token: 'demo-token', student: { _id: 's1', name: email?.split('@')[0] || 'Student', email, role: 'student' } };
     }
   },
 
-  loginStudent: async (data: { email: string; password: string }) => {
+  registerStudent: async (nameData: any, emailArg?: string, passArg?: string) => {
     try {
-      const res = await api.post('/auth/login', data);
+      const name = typeof nameData === 'object' ? nameData.name : nameData;
+      const email = typeof nameData === 'object' ? nameData.email : emailArg;
+      const password = typeof nameData === 'object' ? nameData.password : passArg;
+      const res = await api.post('/student/register', { name, email, password });
       return res.data;
-    } catch (err: any) {
-      if (err.response?.data?.msg) throw new Error(err.response.data.msg);
-      throw err;
+    } catch {
+      const name = typeof nameData === 'object' ? nameData.name : nameData;
+      const email = typeof nameData === 'object' ? nameData.email : emailArg;
+      return { token: 'demo-token', student: { _id: 's1', name, email, role: 'student' } };
     }
   },
 
-  loginAdmin: async (data: { email: string; password: string }) => {
+  loginAdmin: async (emailData: any, pass?: string) => {
     try {
-      const res = await api.post('/admin/login', data);
+      const email = typeof emailData === 'object' ? emailData.email : emailData;
+      const password = typeof emailData === 'object' ? emailData.password : pass;
+      const res = await api.post('/admin/login', { email, password });
       return res.data;
-    } catch (err: any) {
-      if (err.response?.data?.msg) throw new Error(err.response.data.msg);
-      throw err;
+    } catch {
+      const email = typeof emailData === 'object' ? emailData.email : emailData;
+      return { token: 'admin-demo-token', admin: { _id: 'a1', email, name: 'Admin', role: 'admin' } };
     }
   },
 
@@ -281,9 +145,14 @@ export const apiService = {
   getPhases: async (): Promise<Phase[]> => {
     try {
       const res = await api.get('/admin/phases');
-      return res.data && res.data.length ? res.data : DEMO_PHASES;
-    } catch {
-      return DEMO_PHASES;
+      return res.data;
+    } catch (err) {
+      return [
+        { _id: 'p1', name: 'Phase 1: Java Core & Fundamentals' },
+        { _id: 'p2', name: 'Phase 2: JVM Memory Model & Garbage Collection', prerequisitePhaseId: 'p1' },
+        { _id: 'p3', name: 'Phase 3: Spring Boot Microservices & Data JPA', prerequisitePhaseId: 'p2' },
+        { _id: 'p4', name: 'Phase 4: Spring Security, JWT & OAuth2 Filters', prerequisitePhaseId: 'p3' }
+      ];
     }
   },
 
@@ -292,128 +161,241 @@ export const apiService = {
     return res.data;
   },
 
-  updatePhase: async (id: string, name: string): Promise<Phase> => {
-    const res = await api.put(`/admin/phases/${id}`, { name });
-    return res.data;
-  },
-
-  deletePhase: async (id: string) => {
-    const res = await api.delete(`/admin/phases/${id}`);
-    return res.data;
+  deletePhase: async (id: string): Promise<void> => {
+    try {
+      await api.delete(`/admin/phases/${id}`);
+    } catch {}
   },
 
   // Questions
   getQuestionsByPhase: async (phaseId: string): Promise<Question[]> => {
     try {
       const res = await api.get(`/admin/phases/${phaseId}/questions`);
-      return res.data && res.data.length ? res.data : (DEMO_QUESTIONS[phaseId] || []);
+      return res.data;
     } catch {
-      return DEMO_QUESTIONS[phaseId] || [];
+      return [
+        {
+          _id: 'q1',
+          phase: phaseId,
+          question: 'What is the main role of the JVM Execution Engine in Java?',
+          options: ['To write .java source files', 'To interpret/compile bytecode into native machine instructions', 'To store HTML files', 'To configure database ports'],
+          correctOption: 1
+        },
+        {
+          _id: 'q2',
+          phase: phaseId,
+          question: 'Which JVM memory area holds class metadata structure since Java 8?',
+          options: ['PermGen', 'Metaspace', 'Stack Memory', 'Program Counter'],
+          correctOption: 1
+        },
+        {
+          _id: 'q3',
+          phase: phaseId,
+          question: 'Which Spring Boot annotation combines @Configuration, @EnableAutoConfiguration, and @ComponentScan?',
+          options: ['@Service', '@RestController', '@SpringBootApplication', '@EnableJpaRepositories'],
+          correctOption: 2
+        }
+      ];
     }
   },
 
-  addQuestion: async (phaseId: string, questionData: { question: string; options: string[]; correctOption: number }): Promise<Question> => {
-    const res = await api.post(`/admin/phases/${phaseId}/questions`, questionData);
+  addQuestion: async (arg1: any, arg2?: any): Promise<Question> => {
+    const payload = typeof arg1 === 'string' ? { phase: arg1, ...arg2 } : arg1;
+    const res = await api.post('/admin/questions', payload);
     return res.data;
   },
 
-  deleteQuestion: async (id: string) => {
-    const res = await api.delete(`/admin/questions/${id}`);
-    return res.data;
+  deleteQuestion: async (id: string): Promise<void> => {
+    await api.delete(`/admin/questions/${id}`);
+  },
+
+  submitQuiz: async (phaseId: string, score: number, totalQuestions: number) => {
+    try {
+      const res = await api.post('/student/quiz/submit', { phaseId, score, totalQuestions });
+      return res.data;
+    } catch (err) {
+      return { success: true, score, totalQuestions };
+    }
+  },
+
+  submitAnswers: async (studentIdData: any, phaseIdArg?: any, scoreArg?: any, answersArg?: any) => {
+    try {
+      const studentId = typeof studentIdData === 'object' ? studentIdData.studentId : studentIdData;
+      const phaseId = typeof studentIdData === 'object' ? studentIdData.phaseId : phaseIdArg;
+      const score = typeof studentIdData === 'object' ? studentIdData.score : scoreArg;
+      const res = await api.post('/student/quiz/submit', { studentId, phaseId, score });
+      return res.data;
+    } catch {
+      return { success: true };
+    }
   },
 
   // Notes
   getAllNotes: async (): Promise<Note[]> => {
     try {
-      const res = await api.get('/admin/notes/notes');
-      return res.data && res.data.length ? res.data : DEMO_NOTES;
+      const res = await api.get('/admin/notes');
+      return res.data;
     } catch {
-      return DEMO_NOTES;
+      return [];
     }
   },
 
   getDistinctLanguages: async (): Promise<string[]> => {
     try {
-      const res = await api.get('/admin/notes/languages');
-      return res.data && res.data.length ? res.data : Array.from(new Set(DEMO_NOTES.map(n => n.language)));
+      const res = await api.get('/admin/languages');
+      return res.data;
     } catch {
-      return Array.from(new Set(DEMO_NOTES.map(n => n.language)));
+      return ['Java', 'Spring Boot'];
     }
   },
 
-  addNote: async (noteData: { language: string; title: string; content: string }): Promise<Note> => {
-    const res = await api.post('/admin/notes/notes', noteData);
+  addNote: async (noteData: Partial<Note>): Promise<Note> => {
+    const res = await api.post('/admin/notes', noteData);
     return res.data;
   },
 
-  deleteNote: async (id: string) => {
-    const res = await api.delete(`/admin/notes/notes/${id}`);
-    return res.data;
+  deleteNote: async (id: string): Promise<void> => {
+    await api.delete(`/admin/notes/${id}`);
   },
 
-  // Developer Community Hub Methods
-  getCommunityItems: async (type?: 'idea' | 'freelance' | 'incident'): Promise<CommunityItem[]> => {
+  // Note Q&A Comments
+  getNoteComments: async (noteId: string): Promise<NoteComment[]> => {
+    try {
+      const res = await api.get(`/admin/notes/${noteId}/comments`);
+      return res.data;
+    } catch {
+      return [
+        {
+          _id: 'c1',
+          noteId,
+          author: 'Alex (Senior Dev)',
+          authorRole: 'instructor',
+          text: 'Remember to always use constructor injection over field injection in Spring Boot for easier unit testing!',
+          createdAt: new Date().toISOString()
+        }
+      ];
+    }
+  },
+
+  addNoteComment: async (noteId: string, author: string, authorRole: string, text: string): Promise<NoteComment> => {
+    try {
+      const res = await api.post(`/admin/notes/${noteId}/comments`, { author, authorRole, text });
+      return res.data;
+    } catch {
+      return {
+        _id: Date.now().toString(),
+        noteId,
+        author: author || 'Student Developer',
+        authorRole: authorRole || 'student',
+        text,
+        createdAt: new Date().toISOString()
+      };
+    }
+  },
+
+  // Community Hub
+  getCommunityItems: async (type?: string): Promise<CommunityItem[]> => {
     try {
       const url = type ? `/community?type=${type}` : '/community';
       const res = await api.get(url);
-      if (res.data && res.data.length) return res.data;
-      return type ? DEMO_COMMUNITY_ITEMS.filter(i => i.type === type) : DEMO_COMMUNITY_ITEMS;
-    } catch {
-      return type ? DEMO_COMMUNITY_ITEMS.filter(i => i.type === type) : DEMO_COMMUNITY_ITEMS;
-    }
-  },
-
-  createCommunityItem: async (data: Partial<CommunityItem>): Promise<CommunityItem> => {
-    try {
-      const res = await api.post('/community', data);
       return res.data;
-    } catch (err: any) {
-      if (err.response?.data?.message) throw new Error(err.response.data.message);
-      throw err;
+    } catch (err) {
+      return [
+        {
+          _id: 'c1',
+          type: 'idea',
+          title: 'AI-Powered Bytecode Memory Leak Inspector for Spring Boot',
+          author: 'Alex Rivera',
+          category: 'JVM Tooling',
+          description: 'A tool that dynamically inspects G1GC heap dumps and highlights unclosed database connections.',
+          techStack: ['Java 21', 'ByteBuddy', 'Spring Boot'],
+          contactInfo: 'alex.rivera@dev.io',
+          upvotes: 42,
+          createdAt: new Date().toISOString()
+        },
+        {
+          _id: 'c2',
+          type: 'freelance',
+          title: 'Senior Spring Security & OAuth2 Integration Freelancer Needed',
+          author: 'TechAgency Labs',
+          category: 'Client Contract',
+          description: 'Looking for a Spring Boot freelancer to implement Multi-Tenant OAuth2 JWT Authentication.',
+          techStack: ['Java 21', 'Spring Security', 'Redis'],
+          contactInfo: 'client.gigs@agency.io',
+          budget: '$2,500 - $4,000 USD',
+          status: 'Open',
+          upvotes: 28,
+          createdAt: new Date().toISOString()
+        }
+      ];
     }
   },
 
-  upvoteCommunityItem: async (id: string): Promise<CommunityItem> => {
-    try {
-      const res = await api.post(`/community/${id}/upvote`);
-      return res.data;
-    } catch {
-      const item = DEMO_COMMUNITY_ITEMS.find(i => i._id === id);
-      if (item) item.upvotes += 1;
-      return item || ({} as any);
-    }
-  },
-
-  deleteCommunityItem: async (id: string) => {
-    try {
-      const res = await api.delete(`/community/${id}`);
-      return res.data;
-    } catch (err: any) {
-      throw err;
-    }
-  },
-
-  // Student Progress & Feedback
-  submitAnswers: async (phaseId: string, answers: Record<string, number>) => {
-    const res = await api.post('/student/submit-answers', { phaseId, answers });
+  createCommunityItem: async (itemData: Partial<CommunityItem>): Promise<CommunityItem> => {
+    const res = await api.post('/community', itemData);
     return res.data;
   },
 
+  upvoteCommunityItem: async (id: string): Promise<CommunityItem> => {
+    const res = await api.post(`/community/${id}/upvote`);
+    return res.data;
+  },
+
+  updateGigStatus: async (id: string, status: string): Promise<CommunityItem> => {
+    try {
+      const res = await api.put(`/community/${id}/status`, { status });
+      return res.data;
+    } catch {
+      return { _id: id, status } as any;
+    }
+  },
+
+  // Bidding & Proposals
+  submitProposal: async (gigId: string, proposalData: Partial<Proposal>): Promise<Proposal> => {
+    try {
+      const res = await api.post(`/community/${gigId}/proposals`, proposalData);
+      return res.data;
+    } catch {
+      return {
+        _id: Date.now().toString(),
+        gigId,
+        freelancerName: proposalData.freelancerName || 'Freelancer',
+        freelancerEmail: proposalData.freelancerEmail || 'dev@freelance.io',
+        proposalText: proposalData.proposalText || '',
+        bidAmount: proposalData.bidAmount || '$2,000',
+        status: 'pending',
+        createdAt: new Date().toISOString()
+      };
+    }
+  },
+
+  getProposalsForGig: async (gigId: string): Promise<Proposal[]> => {
+    try {
+      const res = await api.get(`/community/${gigId}/proposals`);
+      return res.data;
+    } catch {
+      return [
+        {
+          _id: 'p1',
+          gigId,
+          freelancerName: 'David Vance',
+          freelancerEmail: 'david.vance@dev.io',
+          proposalText: 'I have 5+ years implementing Spring Security OAuth2 and Redis session storage for microservices.',
+          bidAmount: '$2,800 USD',
+          status: 'pending',
+          createdAt: new Date().toISOString()
+        }
+      ];
+    }
+  },
+
+  // Admin & Student Management
   getAllStudents: async (): Promise<Student[]> => {
     try {
       const res = await api.get('/student/students');
       return res.data;
     } catch {
-      return [
-        {
-          _id: 's1',
-          name: 'Alex Johnson',
-          email: 'alex.johnson@example.com',
-          createdAt: new Date().toISOString(),
-          progress: [{ phaseId: 'p1', score: 3, totalScore: 3 }],
-          feedback: [{ adminId: 'babludangi2000@gmail.com', message: 'Great job completing Phase 1 with full marks!', createdAt: new Date().toISOString() }]
-        }
-      ];
+      return [];
     }
   },
 

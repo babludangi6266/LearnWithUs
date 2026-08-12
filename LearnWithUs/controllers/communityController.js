@@ -1,4 +1,5 @@
 const CommunityItem = require('../models/CommunityItem');
+const Proposal = require('../models/Proposal');
 
 // Get items by type or all items
 exports.getItems = async (req, res) => {
@@ -32,6 +33,7 @@ exports.createItem = async (req, res) => {
       contactInfo,
       budget: budget || 'Negotiable',
       severity: severity || 'Medium',
+      status: 'Open',
     });
 
     await newItem.save();
@@ -64,5 +66,46 @@ exports.deleteItem = async (req, res) => {
     res.json({ message: 'Community item deleted' });
   } catch (error) {
     res.status(500).json({ message: 'Error deleting item' });
+  }
+};
+
+// Update Gig Lifecycle Status (Open -> In-Progress -> Delivered -> Closed)
+exports.updateGigStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+    const item = await CommunityItem.findById(req.params.id);
+    if (!item) return res.status(404).json({ message: 'Gig not found' });
+    item.status = status;
+    await item.save();
+    res.json(item);
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating gig status' });
+  }
+};
+
+// Proposals & Bidding Controllers
+exports.submitProposal = async (req, res) => {
+  try {
+    const { freelancerName, freelancerEmail, proposalText, bidAmount } = req.body;
+    const proposal = new Proposal({
+      gigId: req.params.gigId,
+      freelancerName,
+      freelancerEmail,
+      proposalText,
+      bidAmount,
+    });
+    await proposal.save();
+    res.status(201).json(proposal);
+  } catch (error) {
+    res.status(500).json({ message: 'Error submitting proposal' });
+  }
+};
+
+exports.getProposalsForGig = async (req, res) => {
+  try {
+    const proposals = await Proposal.find({ gigId: req.params.gigId }).sort({ createdAt: -1 });
+    res.json(proposals);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching proposals' });
   }
 };

@@ -1,4 +1,5 @@
 const Note = require('../models/Note');
+const NoteComment = require('../models/NoteComment');
 
 const SEED_DATA = [
   // JAVA NOTES
@@ -344,5 +345,31 @@ exports.seedNotes = async (req, res) => {
   } catch (error) {
     console.error('Error seeding notes:', error);
     res.status(500).json({ message: 'Error seeding notes', error });
+  }
+};
+
+// Q&A Note Comments Controller
+exports.getNoteComments = async (req, res) => {
+  try {
+    const comments = await NoteComment.find({ noteId: req.params.noteId }).sort({ createdAt: -1 });
+    res.json(comments);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching note comments' });
+  }
+};
+
+exports.addNoteComment = async (req, res) => {
+  try {
+    const { author, authorRole, text } = req.body;
+    const comment = new NoteComment({
+      noteId: req.params.noteId,
+      author: author || 'Student Developer',
+      authorRole: authorRole || 'student',
+      text
+    });
+    await comment.save();
+    res.status(201).json(comment);
+  } catch (error) {
+    res.status(500).json({ message: 'Error posting note comment' });
   }
 };

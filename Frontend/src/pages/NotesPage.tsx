@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { apiService, Note } from '@/services/api';
+import { apiService, Note, NoteComment } from '@/services/api';
 import MarkdownRenderer, { stripMarkdown } from '@/components/MarkdownRenderer';
 import CodePlayground from '@/components/CodePlayground';
+import { useAuth } from '@/context/AuthContext';
 import { 
   BookOpen, 
   Search, 
@@ -16,10 +17,14 @@ import {
   Zap,
   ListFilter,
   Layers,
-  X
+  MessageSquare,
+  Send,
+  UserCheck,
+  HelpCircle
 } from 'lucide-react';
 
 export default function NotesPage() {
+  const { user } = useAuth();
   const [notes, setNotes] = useState<Note[]>([]);
   const [languages, setLanguages] = useState<string[]>([]);
   const [selectedLanguage, setSelectedLanguage] = useState<string>('All');
@@ -30,6 +35,11 @@ export default function NotesPage() {
   const [mobileViewMode, setMobileViewMode] = useState<'list' | 'reader'>('list');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isPlaygroundOpen, setIsPlaygroundOpen] = useState(false);
+
+  // Q&A Comments State
+  const [comments, setComments] = useState<NoteComment[]>([]);
+  const [newCommentText, setNewCommentText] = useState('');
+  const [isPostingComment, setIsPostingComment] = useState(false);
 
   async function fetchNotes() {
     setIsLoading(true);
@@ -53,6 +63,38 @@ export default function NotesPage() {
   useEffect(() => {
     fetchNotes();
   }, []);
+
+  // Fetch comments when activeNote changes
+  useEffect(() => {
+    if (!activeNote) return;
+    async function loadComments() {
+      try {
+        const fetched = await apiService.getNoteComments(activeNote._id);
+        setComments(fetched);
+      } catch (err) {
+        console.error('Comments fetch error:', err);
+      }
+    }
+    loadComments();
+  }, [activeNote]);
+
+  const handlePostComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeNote || !newCommentText.trim()) return;
+
+    setIsPostingComment(true);
+    try {
+      const author = user?.name || user?.email || 'Student Developer';
+      const role = user?.role === 'admin' ? 'instructor' : 'student';
+      const created = await apiService.addNoteComment(activeNote._id, author, role, newCommentText);
+      setComments(prev => [created, ...prev]);
+      setNewCommentText('');
+    } catch (err) {
+      console.error('Error posting comment:', err);
+    } finally {
+      setIsPostingComment(false);
+    }
+  };
 
   const filteredNotes = notes.filter(note => {
     const matchesLang = selectedLanguage === 'All' || note.language.toLowerCase() === selectedLanguage.toLowerCase();
@@ -187,7 +229,7 @@ export default function NotesPage() {
         </button>
       </div>
 
-      {/* 4. WORKSTATION DUAL-PANE LAYOUT - FULL FLUID WIDTH */}
+      {/* 4. WORKSTATION DUAL-PANE LAYOUT */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
         {/* LEFT PALETTE: Directory Cards */}
@@ -244,63 +286,129 @@ export default function NotesPage() {
           </div>
         </div>
 
-        {/* RIGHT READER STUDIO */}
-        <div className={`lg:col-span-8 ${mobileViewMode === 'reader' ? 'block' : 'hidden lg:block'}`}>
+        {/* RIGHT READER STUDIO & Q&A FORUM */}
+        <div className={`lg:col-span-8 ${mobileViewMode === 'reader' ? 'block' : 'hidden lg:block'} space-y-6`}>
           {activeNote ? (
-            <div className="glass-card rounded-3xl border border-white/10 relative overflow-hidden flex flex-col lg:max-h-[calc(100vh-170px)] shadow-2xl">
-              
-              {/* Toolbar */}
-              <div className="p-5 sm:p-6 border-b border-white/10 bg-[#080C14]/90 backdrop-blur-xl shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1.5 text-[11px] font-mono text-slate-400">
-                    <span>Notes Hub</span>
-                    <ChevronRight className="w-3 h-3 text-slate-600" />
-                    <span className="text-indigo-400">{activeNote.language}</span>
-                    <ChevronRight className="w-3 h-3 text-slate-600" />
-                    <span className="text-slate-200 line-clamp-1">{activeNote.title.slice(0, 40)}...</span>
+            <>
+              {/* Note Reader Card */}
+              <div className="glass-card rounded-3xl border border-white/10 relative overflow-hidden flex flex-col lg:max-h-[calc(100vh-250px)] shadow-2xl">
+                
+                {/* Toolbar */}
+                <div className="p-5 sm:p-6 border-b border-white/10 bg-[#080C14]/90 backdrop-blur-xl shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1.5 text-[11px] font-mono text-slate-400">
+                      <span>Notes Hub</span>
+                      <ChevronRight className="w-3 h-3 text-slate-600" />
+                      <span className="text-indigo-400">{activeNote.language}</span>
+                      <ChevronRight className="w-3 h-3 text-slate-600" />
+                      <span className="text-slate-200 line-clamp-1">{activeNote.title.slice(0, 35)}...</span>
+                    </div>
+                    
+                    <h2 className="text-xl sm:text-2xl font-extrabold text-white font-heading leading-snug">
+                      {activeNote.title}
+                    </h2>
                   </div>
-                  
-                  <h2 className="text-xl sm:text-2xl font-extrabold text-white font-heading leading-snug">
-                    {activeNote.title}
-                  </h2>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => setIsPlaygroundOpen(true)}
+                      className="px-3.5 py-2 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 text-xs font-mono flex items-center gap-1.5 transition-colors"
+                    >
+                      <Zap className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Try Code Live</span>
+                    </button>
+
+                    <button
+                      onClick={handleCopyCode}
+                      className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-white/10 text-slate-200 hover:text-white border border-white/10 text-xs font-mono flex items-center gap-1.5 transition-colors"
+                    >
+                      {copied ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          <span className="text-emerald-400 font-bold">Copied</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5 text-cyan-400" />
+                          <span>Copy</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    onClick={() => setIsPlaygroundOpen(true)}
-                    className="px-3.5 py-2 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 text-xs font-mono flex items-center gap-1.5 transition-colors"
-                  >
-                    <Zap className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>Try Code Live</span>
-                  </button>
-
-                  <button
-                    onClick={handleCopyCode}
-                    className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-white/10 text-slate-200 hover:text-white border border-white/10 text-xs font-mono flex items-center gap-1.5 transition-colors"
-                  >
-                    {copied ? (
-                      <>
-                        <Check className="w-3.5 h-3.5 text-emerald-400" />
-                        <span className="text-emerald-400 font-bold">Copied</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3.5 h-3.5 text-cyan-400" />
-                        <span>Copy</span>
-                      </>
-                    )}
-                  </button>
+                {/* Scrollable Reader Content Area */}
+                <div className="p-6 sm:p-8 overflow-y-auto flex-1 max-h-[450px] lg:max-h-[calc(100vh-320px)] scrollbar-thin bg-[#080C14]/70">
+                  <div className="max-w-none">
+                    <MarkdownRenderer content={activeNote.content} />
+                  </div>
                 </div>
+
               </div>
 
-              {/* Scrollable Reader Content Area */}
-              <div className="p-6 sm:p-8 overflow-y-auto flex-1 max-h-[550px] lg:max-h-[calc(100vh-260px)] scrollbar-thin bg-[#080C14]/70">
-                <div className="max-w-none">
-                  <MarkdownRenderer content={activeNote.content} />
+              {/* 💬 STUDENT Q&A & DOUBT FORUM */}
+              <div className="glass-card rounded-3xl p-6 sm:p-8 border border-white/10 space-y-6">
+                <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5 text-cyan-400" />
+                    <h3 className="text-lg font-bold text-white font-heading">
+                      Student Q&A & Doubt Forum ({comments.length})
+                    </h3>
+                  </div>
+                  <span className="text-xs font-mono text-slate-400">Ask questions regarding this note</span>
+                </div>
+
+                {/* Post New Question Form */}
+                <form onSubmit={handlePostComment} className="flex gap-3">
+                  <input
+                    type="text"
+                    required
+                    value={newCommentText}
+                    onChange={(e) => setNewCommentText(e.target.value)}
+                    placeholder="Ask a doubt or clarification e.g. 'Why does this throw NullPointerException?'"
+                    className="flex-1 px-4 py-2.5 rounded-xl glass-input text-xs"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isPostingComment}
+                    className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-neon-indigo flex items-center gap-1.5 shrink-0"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Post Doubt</span>
+                  </button>
+                </form>
+
+                {/* Comments List */}
+                <div className="space-y-3 pt-2">
+                  {comments.length === 0 ? (
+                    <div className="text-center text-xs text-slate-500 py-4">
+                      No doubts posted for this guide yet. Be the first student to ask a question!
+                    </div>
+                  ) : (
+                    comments.map((c) => (
+                      <div key={c._id} className="p-4 rounded-2xl bg-slate-900/80 border border-white/5 space-y-1.5">
+                        <div className="flex items-center justify-between text-xs font-mono">
+                          <span className="font-bold text-slate-200 flex items-center gap-1.5">
+                            {c.author}
+                            <span className={`px-2 py-0.2 rounded text-[10px] uppercase font-bold ${
+                              c.authorRole === 'instructor' ? 'bg-indigo-500/30 text-indigo-300 border border-indigo-500/40' : 'bg-slate-800 text-slate-400'
+                            }`}>
+                              {c.authorRole}
+                            </span>
+                          </span>
+                          <span className="text-[10px] text-slate-500">
+                            {new Date(c.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-300 font-sans leading-relaxed">
+                          {c.text}
+                        </p>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
-
-            </div>
+            </>
           ) : (
             <div className="glass-card rounded-3xl p-12 border border-white/5 text-center text-slate-500">
               Select a note from the left sidebar to read guidelines and code snippets.

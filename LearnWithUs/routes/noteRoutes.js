@@ -17,4 +17,8 @@ router.delete('/notes/:id', noteController.deleteNote);
 // Notes by language
 router.get('/notes/:language', noteController.getNotesByLanguage);
 
+// Note Comments Q&A Forum
+router.get('/notes/:noteId/comments', noteController.getNoteComments);
+router.post('/notes/:noteId/comments', noteController.addNoteComment);
+
 module.exports = router;
