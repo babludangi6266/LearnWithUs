@@ -89,11 +89,26 @@ export default function QuizPage() {
         }
       });
 
+      // Save attempt locally in localStorage for 100% instant sync
+      try {
+        const existingRaw = localStorage.getItem('learnwithus_progress_map');
+        const existingMap = existingRaw ? JSON.parse(existingRaw) : {};
+        existingMap[phaseId] = {
+          phaseId,
+          score: finalScore,
+          totalScore: questions.length,
+          totalQuestions: questions.length
+        };
+        localStorage.setItem('learnwithus_progress_map', JSON.stringify(existingMap));
+      } catch (e) {
+        console.error('Local progress storage error:', e);
+      }
+
       if (user.role === 'student') {
         try {
-          await apiService.submitAnswers(phaseId, selectedAnswers);
+          await apiService.submitQuiz(phaseId, finalScore, questions.length);
         } catch (e) {
-          console.log('Submitted answers locally fallback');
+          console.log('Submitted answers API optional fallback');
         }
       }
 

@@ -322,11 +322,14 @@ exports.getDistinctLanguages = async (req, res) => {
     res.status(500).json({ message: 'Error fetching languages' });
   }
 };
+
+// Get notes by language
+exports.getNotesByLanguage = async (req, res) => {
   try {
-    const languages = await Note.distinct('language');
-    res.json(languages);
+    const notes = await Note.find({ language: req.params.language });
+    res.json(notes);
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching languages' });
+    res.status(500).json({ message: 'Error fetching notes' });
   }
 };
 
