@@ -3,11 +3,11 @@ import { apiService, Note, NoteComment } from '@/services/api';
 import MarkdownRenderer, { stripMarkdown } from '@/components/MarkdownRenderer';
 import CodePlayground from '@/components/CodePlayground';
 import { useAuth } from '@/context/AuthContext';
-import { 
-  BookOpen, 
-  Search, 
-  Copy, 
-  Check, 
+import {
+  BookOpen,
+  Search,
+  Copy,
+  Check,
   FileText,
   Sparkles,
   ChevronRight,
@@ -46,7 +46,7 @@ export default function NotesPage() {
     try {
       const fetchedNotes = await apiService.getAllNotes();
       setNotes(fetchedNotes);
-      
+
       const fetchedLangs = await apiService.getDistinctLanguages();
       setLanguages(['All', ...fetchedLangs]);
 
@@ -98,8 +98,8 @@ export default function NotesPage() {
 
   const filteredNotes = notes.filter(note => {
     const matchesLang = selectedLanguage === 'All' || note.language.toLowerCase() === selectedLanguage.toLowerCase();
-    const matchesQuery = 
-      note.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    const matchesQuery =
+      note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       note.content.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesLang && matchesQuery;
   });
@@ -118,7 +118,7 @@ export default function NotesPage() {
 
   return (
     <div className={`w-full max-w-[1800px] mx-auto px-4 sm:px-8 lg:px-12 xl:px-16 py-6 space-y-6 ${isFullscreen ? 'fixed inset-0 z-50 bg-[#080C14] overflow-y-auto max-w-none p-6' : ''}`}>
-      
+
       {/* 1. TOP HEADER & METRICS BAR */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-white/10 pb-5">
         <div className="space-y-1">
@@ -180,11 +180,10 @@ export default function NotesPage() {
             <button
               key={lang}
               onClick={() => setSelectedLanguage(lang)}
-              className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${
-                selectedLanguage.toLowerCase() === lang.toLowerCase()
+              className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${selectedLanguage.toLowerCase() === lang.toLowerCase()
                   ? 'bg-gradient-to-r from-indigo-500/20 to-cyan-500/20 border-cyan-400 text-white shadow-neon-indigo'
                   : 'bg-slate-900/60 border-white/5 text-slate-400 hover:text-white hover:bg-white/5'
-              }`}
+                }`}
             >
               {lang}
             </button>
@@ -207,22 +206,20 @@ export default function NotesPage() {
       <div className="flex lg:hidden bg-slate-900 p-1 rounded-xl border border-white/10">
         <button
           onClick={() => setMobileViewMode('list')}
-          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-            mobileViewMode === 'list'
+          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${mobileViewMode === 'list'
               ? 'bg-indigo-600 text-white shadow-sm'
               : 'text-slate-400 hover:text-white'
-          }`}
+            }`}
         >
           <ListFilter className="w-3.5 h-3.5" />
           <span>Select Guide ({filteredNotes.length})</span>
         </button>
         <button
           onClick={() => setMobileViewMode('reader')}
-          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-            mobileViewMode === 'reader'
+          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${mobileViewMode === 'reader'
               ? 'bg-indigo-600 text-white shadow-sm'
               : 'text-slate-400 hover:text-white'
-          }`}
+            }`}
         >
           <BookOpen className="w-3.5 h-3.5" />
           <span>Reader View</span>
@@ -231,7 +228,7 @@ export default function NotesPage() {
 
       {/* 4. WORKSTATION DUAL-PANE LAYOUT */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        
+
         {/* LEFT PALETTE: Directory Cards */}
         <div className={`lg:col-span-4 space-y-3 ${mobileViewMode === 'list' ? 'block' : 'hidden lg:block'} lg:sticky lg:top-24 lg:max-h-[calc(100vh-170px)] flex flex-col`}>
           <div className="flex items-center justify-between px-1 shrink-0">
@@ -256,11 +253,10 @@ export default function NotesPage() {
                   <div
                     key={note._id}
                     onClick={() => handleSelectNote(note)}
-                    className={`p-4 rounded-2xl transition-all cursor-pointer border relative overflow-hidden group ${
-                      isSelected
+                    className={`p-4 rounded-2xl transition-all cursor-pointer border relative overflow-hidden group ${isSelected
                         ? 'bg-gradient-to-r from-indigo-600/20 via-slate-900 to-cyan-500/20 border-cyan-400/50 shadow-neon-indigo'
                         : 'bg-slate-900/60 border-white/5 hover:border-white/20 hover:bg-white/5'
-                    }`}
+                      }`}
                   >
                     {isSelected && (
                       <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-indigo-500 to-cyan-400" />
@@ -292,7 +288,7 @@ export default function NotesPage() {
             <>
               {/* Note Reader Card */}
               <div className="glass-card rounded-3xl border border-white/10 relative overflow-hidden flex flex-col lg:max-h-[calc(100vh-250px)] shadow-2xl">
-                
+
                 {/* Toolbar */}
                 <div className="p-5 sm:p-6 border-b border-white/10 bg-[#080C14]/90 backdrop-blur-xl shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="space-y-1">
@@ -303,7 +299,7 @@ export default function NotesPage() {
                       <ChevronRight className="w-3 h-3 text-slate-600" />
                       <span className="text-slate-200 line-clamp-1">{activeNote.title.slice(0, 35)}...</span>
                     </div>
-                    
+
                     <h2 className="text-xl sm:text-2xl font-extrabold text-white font-heading leading-snug">
                       {activeNote.title}
                     </h2>
@@ -390,9 +386,8 @@ export default function NotesPage() {
                         <div className="flex items-center justify-between text-xs font-mono">
                           <span className="font-bold text-slate-200 flex items-center gap-1.5">
                             {c.author}
-                            <span className={`px-2 py-0.2 rounded text-[10px] uppercase font-bold ${
-                              c.authorRole === 'instructor' ? 'bg-indigo-500/30 text-indigo-300 border border-indigo-500/40' : 'bg-slate-800 text-slate-400'
-                            }`}>
+                            <span className={`px-2 py-0.2 rounded text-[10px] uppercase font-bold ${c.authorRole === 'instructor' ? 'bg-indigo-500/30 text-indigo-300 border border-indigo-500/40' : 'bg-slate-800 text-slate-400'
+                              }`}>
                               {c.authorRole}
                             </span>
                           </span>

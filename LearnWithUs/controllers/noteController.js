@@ -296,28 +296,32 @@ exports.addNote = async (req, res) => {
   }
 };
 
-// Get all notes
+// Get all notes (auto-seeds if empty)
 exports.getAllNotes = async (req, res) => {
   try {
-    const notes = await Note.find();
+    let notes = await Note.find();
+    if (notes.length === 0) {
+      notes = await Note.insertMany(SEED_DATA);
+    }
     res.json(notes);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching notes' });
   }
 };
 
-// Get notes by language
-exports.getNotesByLanguage = async (req, res) => {
-  try {
-    const notes = await Note.find({ language: req.params.language });
-    res.json(notes);
-  } catch (error) {
-    res.status(500).json({ message: 'Error fetching notes' });
-  }
-};
-
-// Get distinct languages
+// Get distinct languages (auto-seeds if empty)
 exports.getDistinctLanguages = async (req, res) => {
+  try {
+    let languages = await Note.distinct('language');
+    if (!languages || languages.length === 0) {
+      await Note.insertMany(SEED_DATA);
+      languages = await Note.distinct('language');
+    }
+    res.json(languages);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching languages' });
+  }
+};
   try {
     const languages = await Note.distinct('language');
     res.json(languages);

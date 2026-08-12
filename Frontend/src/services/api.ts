@@ -234,10 +234,38 @@ export const apiService = {
   getAllNotes: async (): Promise<Note[]> => {
     try {
       const res = await api.get('/admin/notes');
-      return res.data;
-    } catch {
-      return [];
+      if (Array.isArray(res.data) && res.data.length > 0) {
+        return res.data;
+      }
+    } catch (err) {
+      console.warn('Backend notes fetch error, using default notes.');
     }
+    return [
+      {
+        _id: 'n1',
+        language: 'Java',
+        title: '1. Fundamentals of Java & JVM / JRE Architecture',
+        content: `### Java Architecture & Runtime Infrastructure\n\nJava is a compiled and interpreted programming language.\n\n#### Key Components:\n- **JDK (Java Development Kit)**: Contains development tools (javac compiler, debugger) + JRE.\n- **JRE (Java Runtime Environment)**: Contains class libraries + JVM runtime environment.\n- **JVM (Java Virtual Machine)**: Abstract computing machine that executes Java bytecode.\n\n\`\`\`java\npublic class Fundamentals {\n    public static void main(String[] args) {\n        System.out.println("Java Environment: " + System.getProperty("java.version"));\n    }\n}\n\`\`\``
+      },
+      {
+        _id: 'n2',
+        language: 'Java',
+        title: '2. Java Memory Model & Garbage Collection Mechanics',
+        content: `### Memory Structure & Garbage Collectors\n\nJava manages memory automatically via the Garbage Collector in the JVM.\n\n#### JVM Memory Organization:\n- **Heap Memory**: Stores objects & class instances.\n- **Metaspace**: Stores class metadata (off-heap memory).\n- **Stack Memory**: Stores primitive local variables per thread.\n\n\`\`\`java\nRuntime runtime = Runtime.getRuntime();\nlong maxMemory = runtime.maxMemory();\nlong allocatedMemory = runtime.totalMemory();\n\`\`\``
+      },
+      {
+        _id: 'n3',
+        language: 'Spring Boot',
+        title: '1. Spring Boot Core Architecture & Dependency Injection (IoC)',
+        content: `### Spring Inversion of Control & Beans Management\n\nSpring Boot automatically configures applications with opinionated defaults.\n\n#### Essential Annotations:\n- \`@SpringBootApplication\`: Combines configuration and component scanning.\n- \`@Service\`, \`@Repository\`, \`@RestController\`.\n\n\`\`\`java\n@Service\npublic class UserService {\n    private final UserRepository userRepository;\n    public UserService(UserRepository userRepository) {\n        this.userRepository = userRepository;\n    }\n}\n\`\`\``
+      },
+      {
+        _id: 'n4',
+        language: 'Spring Boot',
+        title: '2. Spring Data JPA, Hibernate ORM & Database Access',
+        content: `### Database Object-Relational Mapping\n\nSpring Data JPA simplifies database operations by abstracting SQL queries into repository interfaces.\n\n\`\`\`java\npublic interface UserRepository extends JpaRepository<User, Long> {\n    Optional<User> findByEmail(String email);\n}\n\`\`\``
+      }
+    ];
   },
 
   getDistinctLanguages: async (): Promise<string[]> => {
