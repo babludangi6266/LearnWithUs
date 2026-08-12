@@ -1,8 +1,11 @@
-
 const express = require('express');
 const router = express.Router();
 const phaseController = require('../controllers/phaseController');
 const questionController = require('../controllers/questionController');
+
+// Seed routes (Clears old phases and seeds Java, JS, AI, DSA)
+router.get('/phases/seed', phaseController.seedPhases);
+router.post('/phases/seed', phaseController.seedPhases);
 
 // Phase routes
 router.post('/phases', phaseController.addPhase); // Add a new phase

@@ -70,11 +70,21 @@ export default function DashboardPage() {
     loadData();
   }, [user]);
 
-  // Compute Metrics accurately
-  const completedCount = Object.keys(progressMap).length;
-  const totalPhases = phases.length > 0 ? phases.length : 4;
-  const totalScoreObtained = Object.values(progressMap).reduce((acc, curr) => acc + (curr.score || 0), 0);
-  const totalPossibleScore = Object.values(progressMap).reduce((acc, curr) => acc + (curr.totalScore || curr.totalQuestions || 3), 0);
+  // Compute Metrics dynamically based strictly on active current phases
+  let completedCount = 0;
+  let totalScoreObtained = 0;
+  let totalPossibleScore = 0;
+
+  phases.forEach((phase) => {
+    const prog = progressMap[phase._id] || progressMap[phase.name];
+    if (prog && prog.score !== undefined) {
+      completedCount += 1;
+      totalScoreObtained += (prog.score || 0);
+      totalPossibleScore += (prog.totalScore || prog.totalQuestions || 3);
+    }
+  });
+
+  const totalPhases = phases.length > 0 ? phases.length : 8;
   const overallPercentage = totalPossibleScore > 0 ? Math.round((totalScoreObtained / totalPossibleScore) * 100) : 0;
 
   if (!user) {

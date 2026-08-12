@@ -12,13 +12,29 @@ const api = axios.create({
 // Interceptor to add JWT token from localStorage
 api.interceptors.request.use((config) => {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-  if (token) {
+  if (token && (token.startsWith('ey') || token.includes('demo-token'))) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 }, (error) => {
   return Promise.reject(error);
 });
+
+// Response interceptor to handle 401 expired/malformed tokens automatically
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      if (typeof window !== 'undefined') {
+        const token = localStorage.getItem('token');
+        if (token && !token.startsWith('ey')) {
+          localStorage.removeItem('token');
+        }
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 export interface Phase {
   _id: string;
@@ -145,15 +161,22 @@ export const apiService = {
   getPhases: async (): Promise<Phase[]> => {
     try {
       const res = await api.get('/admin/phases');
-      return res.data;
+      if (Array.isArray(res.data) && res.data.length > 0) {
+        return res.data;
+      }
     } catch (err) {
-      return [
-        { _id: 'p1', name: 'Phase 1: Java Core & Fundamentals' },
-        { _id: 'p2', name: 'Phase 2: JVM Memory Model & Garbage Collection', prerequisitePhaseId: 'p1' },
-        { _id: 'p3', name: 'Phase 3: Spring Boot Microservices & Data JPA', prerequisitePhaseId: 'p2' },
-        { _id: 'p4', name: 'Phase 4: Spring Security, JWT & OAuth2 Filters', prerequisitePhaseId: 'p3' }
-      ];
+      console.warn('Backend phases fetch fallback');
     }
+    return [
+      { _id: 'p1', name: 'Phase 1: Java Core & Object-Oriented Architecture' },
+      { _id: 'p2', name: 'Phase 2: JVM Memory Model & Garbage Collection Mechanics', prerequisitePhaseId: 'p1' },
+      { _id: 'p3', name: 'Phase 3: JavaScript Core, Event Loop & Async Architecture', prerequisitePhaseId: 'p2' },
+      { _id: 'p4', name: 'Phase 4: Modern Frontend Frameworks (React 18 & Next.js 14)', prerequisitePhaseId: 'p3' },
+      { _id: 'p5', name: 'Phase 5: Spring Boot Microservices & Data JPA Architecture', prerequisitePhaseId: 'p4' },
+      { _id: 'p6', name: 'Phase 6: Artificial Intelligence, LLMs & RAG Vector Search', prerequisitePhaseId: 'p5' },
+      { _id: 'p7', name: 'Phase 7: Data Structures & Algorithms (DSA - Trees, DP & Graphs)', prerequisitePhaseId: 'p6' },
+      { _id: 'p8', name: 'Phase 8: System Design, Scalability & High-Throughput Architecture', prerequisitePhaseId: 'p7' }
+    ];
   },
 
   addPhase: async (name: string): Promise<Phase> => {
@@ -166,6 +189,28 @@ export const apiService = {
       await api.delete(`/admin/phases/${id}`);
     } catch {}
   },
+
+  // Bulk Import & Sample Templates
+  importPhasesAndQuestions: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await api.post('/admin/import/phases', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return res.data;
+  },
+
+  importNotes: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await api.post('/admin/import/notes', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return res.data;
+  },
+
+  getExcelTemplateUrl: () => `${API_URL}/admin/templates/excel`,
+  getNotesTemplateUrl: () => `${API_URL}/admin/templates/notes`,
 
   // Questions
   getQuestionsByPhase: async (phaseId: string): Promise<Question[]> => {

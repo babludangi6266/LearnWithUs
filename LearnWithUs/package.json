@@ -18,6 +18,8 @@
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.5.4",
-    "openai": "^4.56.1"
+    "multer": "^2.2.0",
+    "openai": "^4.56.1",
+    "xlsx": "^0.18.5"
   }
 }

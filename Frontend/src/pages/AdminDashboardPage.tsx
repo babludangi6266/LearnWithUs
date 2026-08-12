@@ -13,14 +13,18 @@ import {
   Send, 
   CheckCircle2, 
   AlertCircle,
-  FileText
+  FileText,
+  Upload,
+  Download,
+  FileSpreadsheet,
+  FileCode
 } from 'lucide-react';
 
 export default function AdminDashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState<'phases' | 'notes' | 'students'>('phases');
+  const [activeTab, setActiveTab] = useState<'phases' | 'notes' | 'students' | 'import'>('phases');
 
   const [phases, setPhases] = useState<Phase[]>([]);
   const [selectedPhaseId, setSelectedPhaseId] = useState<string>('');
@@ -46,221 +50,237 @@ export default function AdminDashboardPage() {
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [feedbackMsg, setFeedbackMsg] = useState('');
 
+  // File Upload states
+  const [isUploading, setIsUploading] = useState(false);
+
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const showNotify = (type: 'success' | 'error', text: string) => {
     setNotification({ type, text });
-    setTimeout(() => setNotification(null), 3500);
+    setTimeout(() => setNotification(null), 4500);
   };
+
+  async function refreshAllData() {
+    setIsLoading(true);
+    try {
+      const p = await apiService.getPhases();
+      setPhases(p);
+      if (p.length > 0) {
+        setSelectedPhaseId(p[0]._id);
+        const q = await apiService.getQuestionsByPhase(p[0]._id);
+        setQuestions(q);
+      }
+
+      const n = await apiService.getAllNotes();
+      setNotes(n);
+
+      const s = await apiService.getAllStudents();
+      setStudents(s);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   useEffect(() => {
     if (!user || user.role !== 'admin') {
       navigate('/admin/login', { replace: true });
       return;
     }
+    refreshAllData();
+  }, [user]);
 
-    async function loadData() {
-      setIsLoading(true);
-      try {
-        const p = await apiService.getPhases();
-        setPhases(p);
-        if (p.length > 0) {
-          setSelectedPhaseId(p[0]._id);
-          const q = await apiService.getQuestionsByPhase(p[0]._id);
-          setQuestions(q);
-        }
-
-        const n = await apiService.getAllNotes();
-        setNotes(n);
-
-        const s = await apiService.getAllStudents();
-        setStudents(s);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    loadData();
-  }, [user, navigate]);
-
-  // Load questions when selected phase changes
-  const handleSelectPhase = async (phaseId: string) => {
-    setSelectedPhaseId(phaseId);
+  const handlePhaseChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const pId = e.target.value;
+    setSelectedPhaseId(pId);
     try {
-      const q = await apiService.getQuestionsByPhase(phaseId);
+      const q = await apiService.getQuestionsByPhase(pId);
       setQuestions(q);
-    } catch (err) {
-      console.error(err);
+    } catch {
+      setQuestions([]);
     }
   };
 
-  // Phase Actions
   const handleAddPhase = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPhaseName.trim()) return;
     try {
-      const added = await apiService.addPhase(newPhaseName);
-      setPhases(prev => [...prev, added]);
+      const created = await apiService.addPhase(newPhaseName);
+      setPhases(prev => [...prev, created]);
       setNewPhaseName('');
-      showNotify('success', 'New Phase created successfully!');
-    } catch (err: any) {
-      showNotify('error', err.message || 'Failed to create Phase');
+      if (!selectedPhaseId) setSelectedPhaseId(created._id);
+      showNotify('success', 'New curriculum phase created successfully!');
+    } catch {
+      showNotify('error', 'Failed to create phase.');
     }
   };
 
   const handleDeletePhase = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this phase and all questions inside it?')) return;
+    if (!confirm('Are you sure you want to delete this phase and all associated questions?')) return;
     try {
       await apiService.deletePhase(id);
-      setPhases(prev => prev.filter(p => p._id !== id));
+      const updated = phases.filter(p => p._id !== id);
+      setPhases(updated);
       if (selectedPhaseId === id) {
-        setQuestions([]);
+        if (updated.length > 0) {
+          setSelectedPhaseId(updated[0]._id);
+          const q = await apiService.getQuestionsByPhase(updated[0]._id);
+          setQuestions(q);
+        } else {
+          setSelectedPhaseId('');
+          setQuestions([]);
+        }
       }
-      showNotify('success', 'Phase deleted successfully.');
-    } catch (err: any) {
-      showNotify('error', 'Failed to delete phase');
+      showNotify('success', 'Phase deleted successfully!');
+    } catch {
+      showNotify('error', 'Failed to delete phase.');
     }
   };
 
-  // Question Actions
   const handleAddQuestion = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedPhaseId) {
-      showNotify('error', 'Please select a phase first');
-      return;
-    }
-    if (!qText.trim() || !qOpt0.trim() || !qOpt1.trim()) {
-      showNotify('error', 'Please fill question text and at least 2 options');
-      return;
-    }
-
-    const options = [qOpt0, qOpt1, qOpt2, qOpt3].filter(o => o.trim() !== '');
+    if (!selectedPhaseId || !qText.trim() || !qOpt0.trim() || !qOpt1.trim()) return;
 
     try {
-      const createdQ = await apiService.addQuestion(selectedPhaseId, {
+      const created = await apiService.addQuestion({
+        phase: selectedPhaseId,
         question: qText,
-        options,
+        options: [qOpt0, qOpt1, qOpt2 || 'Option 3', qOpt3 || 'Option 4'],
         correctOption: qCorrect
       });
-      setQuestions(prev => [...prev, createdQ]);
+      setQuestions(prev => [...prev, created]);
       setQText('');
       setQOpt0('');
       setQOpt1('');
       setQOpt2('');
       setQOpt3('');
-      showNotify('success', 'Question added to phase!');
-    } catch (err: any) {
-      showNotify('error', 'Failed to add question');
+      setQCorrect(0);
+      showNotify('success', 'Assessment question added!');
+    } catch {
+      showNotify('error', 'Failed to add question.');
     }
   };
 
-  const handleDeleteQuestion = async (qId: string) => {
+  const handleDeleteQuestion = async (id: string) => {
     try {
-      await apiService.deleteQuestion(qId);
-      setQuestions(prev => prev.filter(q => q._id !== qId));
-      showNotify('success', 'Question deleted.');
-    } catch (err: any) {
-      showNotify('error', 'Failed to delete question');
+      await apiService.deleteQuestion(id);
+      setQuestions(prev => prev.filter(q => q._id !== id));
+      showNotify('success', 'Question deleted!');
+    } catch {
+      showNotify('error', 'Failed to delete question.');
     }
   };
 
-  // Note Actions
   const handleAddNote = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newNoteTitle.trim() || !newNoteContent.trim()) return;
-
     try {
-      const createdNote = await apiService.addNote({
+      const created = await apiService.addNote({
         language: newNoteLang,
         title: newNoteTitle,
         content: newNoteContent
       });
-      setNotes(prev => [createdNote, ...prev]);
+      setNotes(prev => [...prev, created]);
       setNewNoteTitle('');
       setNewNoteContent('');
-      showNotify('success', 'Note published to Notes Hub!');
-    } catch (err: any) {
-      showNotify('error', 'Failed to publish note');
+      showNotify('success', 'Documentation note published!');
+    } catch {
+      showNotify('error', 'Failed to add note.');
     }
   };
 
-  // Send Feedback
+  const handleDeleteNote = async (id: string) => {
+    try {
+      await apiService.deleteNote(id);
+      setNotes(prev => prev.filter(n => n._id !== id));
+      showNotify('success', 'Note deleted!');
+    } catch {
+      showNotify('error', 'Failed to delete note.');
+    }
+  };
+
   const handleSendFeedback = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedStudentId || !feedbackMsg.trim()) {
-      showNotify('error', 'Select a student and write a message');
-      return;
-    }
-
+    if (!selectedStudentId || !feedbackMsg.trim()) return;
     try {
       await apiService.sendFeedback(selectedStudentId, feedbackMsg);
       setFeedbackMsg('');
       showNotify('success', 'Feedback sent to student!');
+    } catch {
+      showNotify('error', 'Failed to send feedback.');
+    }
+  };
+
+  // Bulk File Upload Handlers
+  const handleUploadPhasesFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const res = await apiService.importPhasesAndQuestions(file);
+      showNotify('success', res.message || 'Phases & Questions imported successfully!');
+      await refreshAllData();
     } catch (err: any) {
-      showNotify('error', 'Failed to send feedback');
+      showNotify('error', err.response?.data?.message || 'Error importing Excel/Word file.');
+    } finally {
+      setIsUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleUploadNotesFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const res = await apiService.importNotes(file);
+      showNotify('success', res.message || 'Documentation Notes imported successfully!');
+      await refreshAllData();
+    } catch (err: any) {
+      showNotify('error', err.response?.data?.message || 'Error importing Notes file.');
+    } finally {
+      setIsUploading(false);
+      e.target.value = '';
     }
   };
 
   return (
     <div className="w-full max-w-[1800px] mx-auto px-4 sm:px-8 lg:px-12 xl:px-16 py-10 space-y-8">
-      {/* Top Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-6">
+      
+      {/* Header Banner */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-white/10 pb-6">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 border border-purple-500/40 text-purple-300 text-xs font-mono mb-2">
-            <ShieldCheck className="w-4 h-4 text-purple-400" />
-            <span>Administrator Control Center</span>
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-mono mb-2">
+            <ShieldCheck className="w-4 h-4 text-cyan-400" />
+            <span>Enterprise Admin Management Suite</span>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
-            Admin <span className="gradient-text-cyan-violet">Management Portal</span>
+          <h1 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight font-heading">
+            Admin <span className="gradient-text-indigo-cyan">Control Center</span>
           </h1>
         </div>
-
-        {/* System Notification */}
-        {notification && (
-          <div className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 border ${
-            notification.type === 'success' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : 'bg-rose-500/20 text-rose-300 border-rose-500/40'
-          }`}>
-            {notification.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-            <span>{notification.text}</span>
-          </div>
-        )}
       </div>
 
-      {/* Statistics Header Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="glass-card rounded-2xl p-5 border border-white/10 text-center">
-          <Layers className="w-6 h-6 text-cyan-400 mx-auto mb-2" />
-          <div className="text-2xl font-extrabold text-white font-mono">{phases.length}</div>
-          <div className="text-xs text-gray-400 font-mono uppercase mt-1">Phases</div>
+      {notification && (
+        <div className={`p-4 rounded-2xl border text-xs font-bold flex items-center gap-2 ${
+          notification.type === 'success'
+            ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
+            : 'bg-rose-500/20 border-rose-500/40 text-rose-300'
+        }`}>
+          {notification.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+          <span>{notification.text}</span>
         </div>
+      )}
 
-        <div className="glass-card rounded-2xl p-5 border border-white/10 text-center">
-          <HelpCircle className="w-6 h-6 text-purple-400 mx-auto mb-2" />
-          <div className="text-2xl font-extrabold text-white font-mono">{questions.length}</div>
-          <div className="text-xs text-gray-400 font-mono uppercase mt-1">Questions in Phase</div>
-        </div>
-
-        <div className="glass-card rounded-2xl p-5 border border-white/10 text-center">
-          <BookOpen className="w-6 h-6 text-emerald-400 mx-auto mb-2" />
-          <div className="text-2xl font-extrabold text-white font-mono">{notes.length}</div>
-          <div className="text-xs text-gray-400 font-mono uppercase mt-1">Notes Published</div>
-        </div>
-
-        <div className="glass-card rounded-2xl p-5 border border-white/10 text-center">
-          <Users className="w-6 h-6 text-amber-400 mx-auto mb-2" />
-          <div className="text-2xl font-extrabold text-white font-mono">{students.length}</div>
-          <div className="text-xs text-gray-400 font-mono uppercase mt-1">Registered Students</div>
-        </div>
-      </div>
-
-      {/* Navigation Tabs */}
-      <div className="flex bg-[#06080D]/80 p-1.5 rounded-2xl border border-white/10">
+      {/* Tabs Bar */}
+      <div className="flex bg-[#0F172A]/80 p-1.5 rounded-2xl border border-white/10 overflow-x-auto">
         {[
-          { id: 'phases', label: 'Phases & Question Bank', icon: Layers },
-          { id: 'notes', label: 'Notes Hub Publisher', icon: FileText },
+          { id: 'phases', label: 'Curriculum & Quizzes', icon: Layers },
+          { id: 'import', label: '📥 Excel / Word Bulk Import', icon: Upload },
+          { id: 'notes', label: 'Documentation Studio', icon: BookOpen },
           { id: 'students', label: 'Students & Feedback', icon: Users },
         ].map((tab) => {
           const Icon = tab.icon;
@@ -269,397 +289,453 @@ export default function AdminDashboardPage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`flex-1 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+              className={`px-5 py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap ${
                 isSelected
-                  ? 'bg-gradient-to-r from-purple-500/30 to-cyan-400/30 text-white border border-cyan-400/40 shadow-neon-cyan'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+                  ? 'bg-gradient-to-r from-indigo-500 via-indigo-600 to-cyan-500 text-white shadow-neon-indigo'
+                  : 'text-slate-400 hover:text-white hover:bg-white/5'
               }`}
             >
-              <Icon className={`w-4 h-4 ${isSelected ? 'text-cyan-400' : 'text-gray-500'}`} />
+              <Icon className="w-4 h-4" />
               <span>{tab.label}</span>
             </button>
           );
         })}
       </div>
 
-      {/* TAB 1: PHASES & QUESTIONS MANAGER */}
+      {/* TAB 1: EXCEL / WORD BULK IMPORT & TEMPLATES */}
+      {activeTab === 'import' && (
+        <div className="space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            
+            {/* Import Phases & Questions Card */}
+            <div className="glass-card rounded-3xl p-6 sm:p-8 border border-indigo-500/40 space-y-6 relative overflow-hidden">
+              <div className="glow-point-indigo -top-20 -right-20 opacity-30" />
+
+              <div className="space-y-2">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-mono">
+                  <FileSpreadsheet className="w-4 h-4 text-cyan-400" />
+                  <span>Bulk Phases & Questions Import</span>
+                </div>
+                <h3 className="text-xl font-bold text-white font-heading">
+                  Upload Excel (.xlsx, .csv) or Word/Text File
+                </h3>
+                <p className="text-xs text-slate-300 font-light leading-relaxed">
+                  Upload an Excel spreadsheet or Text file containing phase names and 4-option multiple-choice assessment questions.
+                </p>
+              </div>
+
+              {/* Sample Template Downloads */}
+              <div className="p-4 rounded-2xl bg-slate-900 border border-white/10 space-y-3">
+                <span className="text-[11px] font-mono text-slate-400 uppercase font-bold">1. Download Sample Templates:</span>
+                <div className="flex flex-wrap gap-3">
+                  <a
+                    href={apiService.getExcelTemplateUrl()}
+                    download="Phases_Questions_Template.xlsx"
+                    className="px-4 py-2.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-mono font-bold flex items-center gap-2 transition-all shadow-sm"
+                  >
+                    <Download className="w-4 h-4 text-emerald-400" />
+                    <span>Download Excel Template (.xlsx)</span>
+                  </a>
+                </div>
+              </div>
+
+              {/* File Upload Field */}
+              <div className="space-y-2">
+                <label className="block text-xs font-mono text-slate-400 uppercase">2. Select File to Upload:</label>
+                <input
+                  type="file"
+                  accept=".xlsx, .xls, .csv, .txt, .json"
+                  onChange={handleUploadPhasesFile}
+                  disabled={isUploading}
+                  className="block w-full text-xs text-slate-400 file:mr-4 file:py-3 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 file:cursor-pointer glass-input cursor-pointer"
+                />
+              </div>
+
+              {isUploading && (
+                <div className="p-3 rounded-xl bg-indigo-500/20 text-indigo-300 text-xs font-mono animate-pulse flex items-center gap-2">
+                  <Upload className="w-4 h-4 animate-spin" />
+                  <span>Parsing uploaded file & seeding MongoDB...</span>
+                </div>
+              )}
+            </div>
+
+            {/* Import Notes Card */}
+            <div className="glass-card rounded-3xl p-6 sm:p-8 border border-cyan-500/40 space-y-6 relative overflow-hidden">
+              <div className="glow-point-cyan -top-20 -right-20 opacity-30" />
+
+              <div className="space-y-2">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-300 text-xs font-mono">
+                  <BookOpen className="w-4 h-4 text-cyan-400" />
+                  <span>Bulk Notes Import</span>
+                </div>
+                <h3 className="text-xl font-bold text-white font-heading">
+                  Upload Documentation Notes File
+                </h3>
+                <p className="text-xs text-slate-300 font-light leading-relaxed">
+                  Upload Excel or Word/Markdown files to bulk add technical documentation notes across Java, Spring Boot, JS, and AI.
+                </p>
+              </div>
+
+              {/* Sample Template Downloads */}
+              <div className="p-4 rounded-2xl bg-slate-900 border border-white/10 space-y-3">
+                <span className="text-[11px] font-mono text-slate-400 uppercase font-bold">1. Download Sample Notes Template:</span>
+                <div className="flex flex-wrap gap-3">
+                  <a
+                    href={apiService.getNotesTemplateUrl()}
+                    download="Notes_Template.xlsx"
+                    className="px-4 py-2.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs font-mono font-bold flex items-center gap-2 transition-all shadow-sm"
+                  >
+                    <Download className="w-4 h-4 text-cyan-400" />
+                    <span>Download Notes Template (.xlsx)</span>
+                  </a>
+                </div>
+              </div>
+
+              {/* File Upload Field */}
+              <div className="space-y-2">
+                <label className="block text-xs font-mono text-slate-400 uppercase">2. Select Notes File to Upload:</label>
+                <input
+                  type="file"
+                  accept=".xlsx, .xls, .csv, .txt, .json"
+                  onChange={handleUploadNotesFile}
+                  disabled={isUploading}
+                  className="block w-full text-xs text-slate-400 file:mr-4 file:py-3 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-cyan-600 file:text-white hover:file:bg-cyan-500 file:cursor-pointer glass-input cursor-pointer"
+                />
+              </div>
+
+              {isUploading && (
+                <div className="p-3 rounded-xl bg-cyan-500/20 text-cyan-300 text-xs font-mono animate-pulse flex items-center gap-2">
+                  <Upload className="w-4 h-4 animate-spin" />
+                  <span>Parsing uploaded notes file...</span>
+                </div>
+              )}
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* TAB 2: CURRICULUM & QUIZZES */}
       {activeTab === 'phases' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          
-          {/* Left Column: Create Phase & Phase List */}
-          <div className="lg:col-span-4 space-y-6">
-            
-            {/* Create Phase Form */}
-            <div className="glass-card rounded-2xl p-6 border border-white/10 space-y-4">
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono flex items-center gap-2">
-                <Plus className="w-4 h-4 text-cyan-400" /> Add New Phase
-              </h3>
-              <form onSubmit={handleAddPhase} className="space-y-3">
+          {/* Phases Sidebar */}
+          <div className="lg:col-span-5 space-y-6">
+            <div className="glass-card rounded-3xl p-6 sm:p-8 border border-white/10 space-y-6">
+              <h2 className="text-xl font-bold text-white font-heading flex items-center gap-2">
+                <Plus className="w-5 h-5 text-cyan-400" />
+                Add New Curriculum Phase
+              </h2>
+
+              <form onSubmit={handleAddPhase} className="space-y-4">
                 <input
                   type="text"
                   required
                   value={newPhaseName}
                   onChange={(e) => setNewPhaseName(e.target.value)}
-                  placeholder="Phase Name (e.g. Phase 5: Microservices)"
-                  className="w-full px-3.5 py-2.5 rounded-xl glass-input text-xs"
+                  placeholder="e.g. Phase 9: Distributed Microservices Architecture"
+                  className="w-full px-4 py-3 rounded-xl glass-input text-xs"
                 />
                 <button
                   type="submit"
-                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-400 to-emerald-500 text-[#06080D] font-bold text-xs shadow-neon-emerald"
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 text-white font-bold text-xs shadow-neon-indigo flex items-center justify-center gap-2"
                 >
-                  Create Phase
+                  <Plus className="w-4 h-4" />
+                  <span>Create Phase</span>
                 </button>
               </form>
             </div>
 
             {/* Existing Phases List */}
-            <div className="glass-card rounded-2xl p-6 border border-white/10 space-y-3">
-              <h3 className="text-xs font-mono uppercase tracking-wider text-gray-400 mb-2">
-                Existing Phases ({phases.length})
-              </h3>
-              <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1">
-                {phases.map((p) => {
-                  const isSelected = selectedPhaseId === p._id;
-                  return (
-                    <div
-                      key={p._id}
-                      onClick={() => handleSelectPhase(p._id)}
-                      className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2 ${
-                        isSelected
-                          ? 'bg-cyan-400/10 border-cyan-400 text-white shadow-neon-cyan'
-                          : 'bg-gray-900/40 border-white/5 text-gray-400 hover:text-white'
-                      }`}
+            <div className="glass-card rounded-3xl p-6 border border-white/10 space-y-4">
+              <h3 className="text-xs font-mono text-slate-400 uppercase font-bold">Existing Phases ({phases.length})</h3>
+              <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+                {phases.map((p) => (
+                  <div
+                    key={p._id}
+                    onClick={() => {
+                      setSelectedPhaseId(p._id);
+                      apiService.getQuestionsByPhase(p._id).then(setQuestions);
+                    }}
+                    className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                      selectedPhaseId === p._id
+                        ? 'bg-indigo-600/20 border-cyan-400 text-white shadow-neon-indigo'
+                        : 'bg-slate-900 border-white/5 text-slate-300 hover:bg-white/5'
+                    }`}
+                  >
+                    <span className="text-xs font-bold truncate">{p.name}</span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeletePhase(p._id);
+                      }}
+                      className="p-1.5 rounded-lg hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 transition-colors"
+                      title="Delete Phase"
                     >
-                      <span className="text-xs font-bold line-clamp-1">{p.name}</span>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDeletePhase(p._id); }}
-                        className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/30 text-rose-400 transition-colors shrink-0"
-                        title="Delete Phase"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  );
-                })}
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
               </div>
             </div>
-
           </div>
 
-          {/* Right Column: Manage Questions for Selected Phase */}
-          <div className="lg:col-span-8 space-y-6">
-            
-            {/* Add Question to Selected Phase Form */}
-            <div className="glass-card rounded-2xl p-6 border border-white/10 space-y-4">
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono flex items-center gap-2">
-                <Plus className="w-4 h-4 text-purple-400" /> Add Question to Selected Phase
-              </h3>
-              
+          {/* Questions Editor */}
+          <div className="lg:col-span-7 space-y-6">
+            <div className="glass-card rounded-3xl p-6 sm:p-8 border border-white/10 space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+                <h2 className="text-xl font-bold text-white font-heading flex items-center gap-2">
+                  <HelpCircle className="w-5 h-5 text-cyan-400" />
+                  Add Assessment Question
+                </h2>
+
+                <select
+                  value={selectedPhaseId}
+                  onChange={handlePhaseChange}
+                  className="px-3.5 py-2 rounded-xl glass-input text-xs bg-slate-900 font-bold"
+                >
+                  {phases.map((p) => (
+                    <option key={p._id} value={p._id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+
               <form onSubmit={handleAddQuestion} className="space-y-4">
                 <div>
-                  <label className="block text-[11px] font-mono text-gray-400 mb-1">Question Text</label>
+                  <label className="block text-[11px] font-mono text-slate-400 mb-1">Question Prompt</label>
                   <textarea
                     required
                     rows={2}
                     value={qText}
                     onChange={(e) => setQText(e.target.value)}
-                    placeholder="Enter the question text..."
+                    placeholder="Enter question text e.g. What is the role of Garbage Collection in Java?"
                     className="w-full p-3 rounded-xl glass-input text-xs"
                   />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] font-mono text-gray-400 mb-1">Option A</label>
+                    <label className="block text-[11px] font-mono text-slate-400 mb-1">Option 1 (Index 0)</label>
                     <input
                       type="text"
                       required
                       value={qOpt0}
                       onChange={(e) => setQOpt0(e.target.value)}
-                      placeholder="Option A string"
                       className="w-full px-3 py-2 rounded-xl glass-input text-xs"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-mono text-gray-400 mb-1">Option B</label>
+                    <label className="block text-[11px] font-mono text-slate-400 mb-1">Option 2 (Index 1)</label>
                     <input
                       type="text"
                       required
                       value={qOpt1}
                       onChange={(e) => setQOpt1(e.target.value)}
-                      placeholder="Option B string"
                       className="w-full px-3 py-2 rounded-xl glass-input text-xs"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-mono text-gray-400 mb-1">Option C (Optional)</label>
+                    <label className="block text-[11px] font-mono text-slate-400 mb-1">Option 3 (Index 2)</label>
                     <input
                       type="text"
                       value={qOpt2}
                       onChange={(e) => setQOpt2(e.target.value)}
-                      placeholder="Option C string"
                       className="w-full px-3 py-2 rounded-xl glass-input text-xs"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-mono text-gray-400 mb-1">Option D (Optional)</label>
+                    <label className="block text-[11px] font-mono text-slate-400 mb-1">Option 4 (Index 3)</label>
                     <input
                       type="text"
                       value={qOpt3}
                       onChange={(e) => setQOpt3(e.target.value)}
-                      placeholder="Option D string"
                       className="w-full px-3 py-2 rounded-xl glass-input text-xs"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-mono text-gray-400 mb-1">Correct Option Index</label>
+                  <label className="block text-[11px] font-mono text-slate-400 mb-1">Correct Answer Index</label>
                   <select
                     value={qCorrect}
-                    onChange={(e) => setQCorrect(parseInt(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl glass-input text-xs bg-gray-900"
+                    onChange={(e) => setQCorrect(parseInt(e.target.value, 10))}
+                    className="w-full px-3 py-2 rounded-xl glass-input text-xs bg-slate-900"
                   >
-                    <option value={0}>Option A (Index 0)</option>
-                    <option value={1}>Option B (Index 1)</option>
-                    <option value={2}>Option C (Index 2)</option>
-                    <option value={3}>Option D (Index 3)</option>
+                    <option value={0}>Option 1 (Index 0)</option>
+                    <option value={1}>Option 2 (Index 1)</option>
+                    <option value={2}>Option 3 (Index 2)</option>
+                    <option value={3}>Option 4 (Index 3)</option>
                   </select>
                 </div>
 
                 <button
                   type="submit"
-                  className="w-full py-2.5 rounded-xl bg-purple-600 text-white font-bold text-xs shadow-neon-violet hover:bg-purple-500 transition-colors"
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-white font-bold text-xs shadow-neon-indigo flex items-center justify-center gap-2"
                 >
-                  Save Question to Phase Bank
+                  <Plus className="w-4 h-4" />
+                  <span>Add Question to Selected Phase</span>
                 </button>
               </form>
             </div>
 
-            {/* Questions List for Selected Phase */}
-            <div className="glass-card rounded-2xl p-6 border border-white/10 space-y-4">
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono">
-                Questions in Phase ({questions.length})
-              </h3>
-
-              {questions.length === 0 ? (
-                <p className="text-xs text-gray-500 text-center py-6">No questions added to this phase yet.</p>
-              ) : (
-                <div className="space-y-3">
-                  {questions.map((q, idx) => (
-                    <div key={q._id} className="p-4 rounded-xl bg-[#06080D]/60 border border-white/5 space-y-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="text-xs font-bold text-white">
-                          <span className="text-cyan-400 mr-1 font-mono">Q{idx + 1}.</span> {q.question}
+            {/* Questions List */}
+            <div className="glass-card rounded-3xl p-6 border border-white/10 space-y-4">
+              <h3 className="text-xs font-mono text-slate-400 uppercase font-bold">Questions in Selected Phase ({questions.length})</h3>
+              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+                {questions.map((q, idx) => (
+                  <div key={q._id} className="p-4 rounded-2xl bg-slate-900 border border-white/10 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-bold text-white">Q{idx + 1}: {q.question}</span>
+                      <button
+                        onClick={() => handleDeleteQuestion(q._id)}
+                        className="p-1 rounded hover:bg-rose-500/20 text-rose-400"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1 text-[11px] font-mono text-slate-400">
+                      {q.options.map((opt, optIdx) => (
+                        <div key={optIdx} className={optIdx === q.correctOption ? 'text-emerald-400 font-bold' : ''}>
+                          {optIdx}: {opt} {optIdx === q.correctOption ? '✓' : ''}
                         </div>
-                        <button
-                          onClick={() => handleDeleteQuestion(q._id)}
-                          className="p-1 rounded-lg hover:bg-rose-500/20 text-rose-400 transition-colors shrink-0"
-                          title="Delete Question"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2 text-[11px] font-mono text-gray-400 pt-1">
-                        {q.options.map((opt, oIdx) => (
-                          <div
-                            key={oIdx}
-                            className={`p-2 rounded-lg border ${
-                              oIdx === q.correctOption
-                                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-bold'
-                                : 'bg-gray-900 border-white/5'
-                            }`}
-                          >
-                            {String.fromCharCode(65 + oIdx)}: {opt}
-                          </div>
-                        ))}
-                      </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              )}
+                  </div>
+                ))}
+              </div>
             </div>
-
           </div>
-
         </div>
       )}
 
-      {/* TAB 2: NOTES PUBLISHER */}
+      {/* TAB 3: DOCUMENTATION NOTES */}
       {activeTab === 'notes' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          
-          {/* Create Note Form */}
-          <div className="lg:col-span-5 space-y-4">
-            <div className="glass-card rounded-2xl p-6 border border-white/10 space-y-4">
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono flex items-center gap-2">
-                <FileText className="w-4 h-4 text-cyan-400" /> Publish New Note
-              </h3>
+        <div className="glass-card rounded-3xl p-6 sm:p-8 border border-white/10 space-y-6">
+          <h2 className="text-xl font-bold text-white font-heading flex items-center gap-2">
+            <BookOpen className="w-5 h-5 text-cyan-400" />
+            Publish Technical Documentation Note
+          </h2>
 
-              <form onSubmit={handleAddNote} className="space-y-4">
-                <div>
-                  <label className="block text-[11px] font-mono text-gray-400 mb-1">Programming Language</label>
-                  <select
-                    value={newNoteLang}
-                    onChange={(e) => setNewNoteLang(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl glass-input text-xs bg-gray-900"
-                  >
-                    <option value="JavaScript">JavaScript</option>
-                    <option value="TypeScript">TypeScript</option>
-                    <option value="Python">Python</option>
-                    <option value="C++">C++</option>
-                    <option value="Java">Java</option>
-                    <option value="Rust">Rust</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-mono text-gray-400 mb-1">Note Title</label>
-                  <input
-                    type="text"
-                    required
-                    value={newNoteTitle}
-                    onChange={(e) => setNewNoteTitle(e.target.value)}
-                    placeholder="e.g. React Custom Hooks & Memory Efficiency"
-                    className="w-full px-3.5 py-2.5 rounded-xl glass-input text-xs"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-mono text-gray-400 mb-1">Content / Code Snippet</label>
-                  <textarea
-                    required
-                    rows={6}
-                    value={newNoteContent}
-                    onChange={(e) => setNewNoteContent(e.target.value)}
-                    placeholder="Enter code snippets, markdown, or documentation text..."
-                    className="w-full p-3 rounded-xl glass-input text-xs font-mono"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-400 to-emerald-500 text-[#06080D] font-bold text-xs shadow-neon-emerald"
+          <form onSubmit={handleAddNote} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[11px] font-mono text-slate-400 mb-1 uppercase">Technology / Language</label>
+                <select
+                  value={newNoteLang}
+                  onChange={(e) => setNewNoteLang(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl glass-input text-xs bg-slate-900 font-bold"
                 >
-                  Publish Note
-                </button>
-              </form>
-            </div>
-          </div>
+                  <option value="Java">Java</option>
+                  <option value="Spring Boot">Spring Boot</option>
+                  <option value="JavaScript">JavaScript</option>
+                  <option value="React">React</option>
+                  <option value="Python">Python</option>
+                  <option value="AI & ML">AI & ML</option>
+                  <option value="DSA">Data Structures & Algorithms</option>
+                </select>
+              </div>
 
-          {/* Published Notes List */}
-          <div className="lg:col-span-7 space-y-4">
-            <div className="glass-card rounded-2xl p-6 border border-white/10 space-y-4">
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono">
-                Published Notes ({notes.length})
-              </h3>
-
-              <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
-                {notes.map((n) => (
-                  <div key={n._id} className="p-4 rounded-xl bg-[#06080D]/60 border border-white/5 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="px-2.5 py-0.5 rounded text-[10px] font-mono font-extrabold uppercase bg-purple-500/20 text-purple-300">
-                        {n.language}
-                      </span>
-                    </div>
-                    <h4 className="text-sm font-bold text-white">{n.title}</h4>
-                    <pre className="p-3 rounded-lg bg-gray-950 text-[11px] font-mono text-cyan-400 overflow-x-auto max-h-28">
-                      {n.content}
-                    </pre>
-                  </div>
-                ))}
+              <div>
+                <label className="block text-[11px] font-mono text-slate-400 mb-1 uppercase">Note Title</label>
+                <input
+                  type="text"
+                  required
+                  value={newNoteTitle}
+                  onChange={(e) => setNewNoteTitle(e.target.value)}
+                  placeholder="e.g. 1. JVM Memory Tuning & Garbage Collection"
+                  className="w-full px-4 py-2.5 rounded-xl glass-input text-xs"
+                />
               </div>
             </div>
-          </div>
 
+            <div>
+              <label className="block text-[11px] font-mono text-slate-400 mb-1 uppercase">Content (Markdown Supported)</label>
+              <textarea
+                required
+                rows={6}
+                value={newNoteContent}
+                onChange={(e) => setNewNoteContent(e.target.value)}
+                placeholder="Write documentation using Markdown syntax..."
+                className="w-full p-4 rounded-xl glass-input text-xs font-mono"
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 text-white font-bold text-xs shadow-neon-indigo flex items-center justify-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Publish Note</span>
+            </button>
+          </form>
+
+          {/* Notes List */}
+          <div className="space-y-3 pt-4">
+            <h3 className="text-xs font-mono text-slate-400 uppercase font-bold">Published Notes ({notes.length})</h3>
+            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+              {notes.map((n) => (
+                <div key={n._id} className="p-4 rounded-2xl bg-slate-900 border border-white/10 flex items-center justify-between gap-4">
+                  <div>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 uppercase">
+                      {n.language}
+                    </span>
+                    <h4 className="text-sm font-bold text-white mt-1">{n.title}</h4>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteNote(n._id)}
+                    className="p-2 rounded-xl hover:bg-rose-500/20 text-slate-400 hover:text-rose-400"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
-      {/* TAB 3: STUDENTS & FEEDBACK */}
+      {/* TAB 4: STUDENTS & FEEDBACK */}
       {activeTab === 'students' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          
-          {/* Registered Students Table */}
-          <div className="lg:col-span-7 space-y-4">
-            <div className="glass-card rounded-2xl p-6 border border-white/10 space-y-4">
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono">
-                Registered Students List ({students.length})
-              </h3>
+        <div className="glass-card rounded-3xl p-6 sm:p-8 border border-white/10 space-y-6">
+          <h2 className="text-xl font-bold text-white font-heading flex items-center gap-2">
+            <Users className="w-5 h-5 text-cyan-400" />
+            Send Feedback to Student
+          </h2>
 
-              <div className="space-y-3">
+          <form onSubmit={handleSendFeedback} className="space-y-4">
+            <div>
+              <label className="block text-[11px] font-mono text-slate-400 mb-1 uppercase">Select Student</label>
+              <select
+                value={selectedStudentId}
+                onChange={(e) => setSelectedStudentId(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-xl glass-input text-xs bg-slate-900 font-bold"
+              >
+                <option value="">-- Choose Student --</option>
                 {students.map((s) => (
-                  <div
-                    key={s._id}
-                    onClick={() => setSelectedStudentId(s._id)}
-                    className={`p-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-4 ${
-                      selectedStudentId === s._id
-                        ? 'bg-purple-500/20 border-purple-500 text-white shadow-neon-violet'
-                        : 'bg-[#06080D]/60 border-white/5 text-gray-300 hover:text-white'
-                    }`}
-                  >
-                    <div>
-                      <div className="font-bold text-sm text-white">{s.name || 'Student'}</div>
-                      <div className="text-xs font-mono text-gray-400">{s.email}</div>
-                    </div>
-                    <div className="text-right">
-                      <span className="px-2.5 py-1 rounded text-[10px] font-mono font-bold bg-gray-800 text-cyan-400 border border-white/10">
-                        {s.progress?.length || 0} Phases Evaluated
-                      </span>
-                    </div>
-                  </div>
+                  <option key={s._id} value={s._id}>{s.name} ({s.email})</option>
                 ))}
-              </div>
+              </select>
             </div>
-          </div>
 
-          {/* Send Direct Feedback Form */}
-          <div className="lg:col-span-5 space-y-4">
-            <div className="glass-card rounded-2xl p-6 border border-purple-500/30 space-y-4">
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono flex items-center gap-2">
-                <Send className="w-4 h-4 text-purple-400" /> Dispatch Student Feedback
-              </h3>
-
-              <form onSubmit={handleSendFeedback} className="space-y-4">
-                <div>
-                  <label className="block text-[11px] font-mono text-gray-400 mb-1">Target Student ID</label>
-                  <select
-                    value={selectedStudentId}
-                    onChange={(e) => setSelectedStudentId(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl glass-input text-xs bg-gray-900"
-                  >
-                    <option value="">-- Select a Student --</option>
-                    {students.map((s) => (
-                      <option key={s._id} value={s._id}>
-                        {s.name} ({s.email})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-mono text-gray-400 mb-1">Feedback Message</label>
-                  <textarea
-                    required
-                    rows={4}
-                    value={feedbackMsg}
-                    onChange={(e) => setFeedbackMsg(e.target.value)}
-                    placeholder="Enter personalized guidance, suggestions, or congratulations..."
-                    className="w-full p-3 rounded-xl glass-input text-xs"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full py-2.5 rounded-xl bg-purple-600 text-white font-bold text-xs shadow-neon-violet hover:bg-purple-500 transition-colors flex items-center justify-center gap-2"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  <span>Send Direct Feedback</span>
-                </button>
-              </form>
+            <div>
+              <label className="block text-[11px] font-mono text-slate-400 mb-1 uppercase">Feedback Message</label>
+              <textarea
+                required
+                rows={3}
+                value={feedbackMsg}
+                onChange={(e) => setFeedbackMsg(e.target.value)}
+                placeholder="Enter feedback or praise for student progress..."
+                className="w-full p-4 rounded-xl glass-input text-xs"
+              />
             </div>
-          </div>
 
+            <button
+              type="submit"
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 text-white font-bold text-xs shadow-neon-indigo flex items-center justify-center gap-2"
+            >
+              <Send className="w-4 h-4" />
+              <span>Send Feedback</span>
+            </button>
+          </form>
         </div>
       )}
 
