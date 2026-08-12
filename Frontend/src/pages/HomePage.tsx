@@ -1,26 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { apiService, Phase, CommunityItem } from '@/services/api';
+import SkillTree3D from '@/components/SkillTree3D';
+import GlobalLearnerGlobe from '@/components/GlobalLearnerGlobe';
 import { 
   Sparkles, 
   ArrowRight, 
   BookOpen, 
   Layers, 
-  Code2, 
-  CheckCircle2, 
-  Award, 
   Users, 
   Zap, 
-  ShieldCheck, 
   Trophy,
   Briefcase,
   Lightbulb,
   AlertTriangle,
   Building2,
-  Rocket,
+  ThumbsUp,
   Globe2,
-  DollarSign,
-  ThumbsUp
+  CheckCircle2
 } from 'lucide-react';
 import AuthModal from '@/components/AuthModal';
 
@@ -58,7 +55,7 @@ export default function HomePage() {
             <span>Developer Ecosystem • Community Hub • Freelance Accelerator</span>
           </div>
 
-          {/* Hero Headline - Full Fluid Width */}
+          {/* Hero Headline */}
           <h1 className="text-4xl sm:text-6xl lg:text-7xl xl:text-8xl font-extrabold text-white tracking-tight leading-[1.1] max-w-7xl mx-auto font-heading">
             Empowering Developers, Freelancers &{' '}
             <span className="gradient-text-indigo-cyan">Small Agencies to Build & Scale</span>
@@ -89,8 +86,8 @@ export default function HomePage() {
             </Link>
           </div>
 
-          {/* Metrics Bar - Full Grid Width */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 w-full max-w-7xl mx-auto pt-10">
+          {/* Metrics Bar */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 w-full max-w-7xl mx-auto pt-8">
             {[
               { label: 'Community Developers', value: '12,500+', icon: Users },
               { label: 'Freelance Gigs Posted', value: '$450K+', icon: Briefcase },
@@ -111,7 +108,25 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 2. FREELANCERS & AGENCIES ACCELERATION GRID - FULL FLUID WIDTH */}
+      {/* 2. WOW FACTOR SHOWCASE: 3D SKILL TREE & GLOBAL LEARNER GLOBE */}
+      <section className="w-full max-w-[1800px] mx-auto px-4 sm:px-8 lg:px-12 xl:px-16 space-y-8">
+        <div className="text-center space-y-3">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-xs font-mono">
+            <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+            <span>Interactive 3D Engine Visualization</span>
+          </div>
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight font-heading">
+            Experience <span className="gradient-text-indigo-cyan">Next-Gen Learning Telemetry</span>
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <SkillTree3D phases={phases} />
+          <GlobalLearnerGlobe />
+        </div>
+      </section>
+
+      {/* 3. FREELANCERS & AGENCIES ACCELERATION GRID */}
       <section className="w-full max-w-[1800px] mx-auto px-4 sm:px-8 lg:px-12 xl:px-16 space-y-12">
         <div className="text-center space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-mono">
@@ -186,7 +201,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 3. LIVE COMMUNITY PREVIEW FEED - FULL FLUID WIDTH */}
+      {/* 4. LIVE COMMUNITY PREVIEW FEED */}
       <section className="w-full max-w-[1800px] mx-auto px-4 sm:px-8 lg:px-12 xl:px-16 space-y-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
           <div>
@@ -231,196 +246,6 @@ export default function HomePage() {
               </div>
             </div>
           ))}
-        </div>
-      </section>
-
-      {/* 4. LEARNING CURRICULUM PHASES - FULL FLUID WIDTH */}
-      <section className="w-full max-w-[1800px] mx-auto px-4 sm:px-8 lg:px-12 xl:px-16 space-y-12">
-        <div className="text-center space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-xs font-mono">
-            <Layers className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Developer Curriculum & Certifications</span>
-          </div>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight font-heading">
-            Structured <span className="gradient-text-indigo-cyan">Learning Phases</span>
-          </h2>
-          <p className="text-sm sm:text-base text-slate-400 max-w-2xl mx-auto font-light">
-            Test your knowledge with real-time quiz evaluations and receive feedback directly from instructors.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {phases.map((phase, idx) => (
-            <div
-              key={phase._id}
-              className="glass-card glass-card-hover rounded-3xl p-8 border border-white/10 relative overflow-hidden flex flex-col justify-between space-y-6"
-            >
-              <div className="glow-point-indigo -top-20 -right-20 opacity-30" />
-              
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                    Phase 0{idx + 1}
-                  </span>
-                  <span className="text-xs font-mono text-emerald-400 flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Ready for Quiz
-                  </span>
-                </div>
-
-                <h3 className="text-2xl font-bold text-white leading-snug font-heading">{phase.name}</h3>
-
-                <p className="text-xs sm:text-sm text-slate-400 font-light leading-relaxed">
-                  Master core Java, JVM internals, Spring Boot microservices, and security filter chains.
-                </p>
-              </div>
-
-              <div className="pt-4 border-t border-white/10 flex items-center justify-between">
-                <span className="text-xs text-slate-400 font-mono">Multiple Choice Questions</span>
-                <Link
-                  to={`/quiz/${phase._id}`}
-                  className="px-5 py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-xs shadow-neon-indigo hover:bg-indigo-500 transition-all flex items-center gap-1.5"
-                >
-                  <span>Start Phase Quiz</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* 5. INTERACTIVE FEATURE SHOWCASE - FULL FLUID WIDTH */}
-      <section className="w-full max-w-[1800px] mx-auto px-4 sm:px-8 lg:px-12 xl:px-16">
-        <div className="glass-card rounded-3xl p-8 sm:p-12 border border-white/10 space-y-12">
-          
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-            
-            <div className="lg:col-span-5 space-y-4">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-xs font-mono">
-                <Zap className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Ecosystem Features</span>
-              </div>
-
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight font-heading">
-                Built for <span className="gradient-text-indigo-cyan">Modern Developers</span>
-              </h2>
-
-              <div className="space-y-3 pt-4">
-                {[
-                  { id: 'freelance', label: 'Freelance & Agency Gigs', icon: Briefcase, desc: 'Post client contracts and hire vetted engineers' },
-                  { id: 'ideas', label: 'Community Startup Ideas', icon: Lightbulb, desc: 'Validate architectural proposals and crowdsource feedback' },
-                  { id: 'incidents', label: 'Tech Outage Watch', icon: AlertTriangle, desc: 'Track real-time ORM and cloud infrastructure alerts' },
-                  { id: 'quiz', label: 'Phase Assessments', icon: Zap, desc: 'Real-time quiz evaluation with immediate score tracking' },
-                ].map((tab) => {
-                  const Icon = tab.icon;
-                  const isSelected = activeTab === tab.id;
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id as any)}
-                      className={`w-full text-left p-4 rounded-2xl transition-all border ${
-                        isSelected
-                          ? 'bg-gradient-to-r from-indigo-500/20 via-slate-900 to-cyan-500/20 border-cyan-400/40 text-white shadow-neon-cyan'
-                          : 'bg-[#080C14]/60 border-white/5 text-slate-400 hover:text-slate-200 hover:bg-white/5'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Icon className={`w-5 h-5 ${isSelected ? 'text-cyan-400' : 'text-slate-500'}`} />
-                        <div>
-                          <div className="font-bold text-sm font-heading">{tab.label}</div>
-                          <div className="text-xs text-slate-400 font-light mt-0.5">{tab.desc}</div>
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="lg:col-span-7">
-              <div className="glass-card rounded-2xl p-8 border border-white/10 bg-[#080C14]/80 min-h-[360px] flex flex-col justify-center">
-                {activeTab === 'freelance' && (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                      <span className="text-xs font-mono text-emerald-400 font-bold">💼 Freelance Contract</span>
-                      <span className="text-xs font-mono text-cyan-400">$2,500 - $4,000 USD</span>
-                    </div>
-                    <h4 className="text-lg font-bold text-white font-heading">
-                      Senior Spring Security & OAuth2 Integration Freelancer Needed
-                    </h4>
-                    <p className="text-xs text-slate-300 font-sans leading-relaxed">
-                      Looking for an experienced Spring Boot freelancer to implement Multi-Tenant OAuth2 JWT Authentication and Redis session caching.
-                    </p>
-                    <div className="pt-2">
-                      <Link to="/community" className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-300 text-xs font-bold border border-emerald-500/40 inline-flex items-center gap-1.5">
-                        <span>Apply / Contact Agency</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </Link>
-                    </div>
-                  </div>
-                )}
-
-                {activeTab === 'ideas' && (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                      <span className="text-xs font-mono text-indigo-400 font-bold">💡 Tech Idea Proposal</span>
-                      <span className="text-xs font-mono text-cyan-400">42 Upvotes</span>
-                    </div>
-                    <h4 className="text-lg font-bold text-white font-heading">
-                      AI-Powered Code Reviewer for Spring Boot Microservices
-                    </h4>
-                    <p className="text-xs text-slate-300 font-sans leading-relaxed">
-                      Automatically inspect Java Spring Boot PRs for memory leaks, N+1 JPA query inefficiencies, and unhandled exception safety.
-                    </p>
-                    <div className="pt-2">
-                      <Link to="/community" className="px-4 py-2 rounded-xl bg-indigo-500/20 text-indigo-300 text-xs font-bold border border-indigo-500/40 inline-flex items-center gap-1.5">
-                        <span>Upvote & Collaborate</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </Link>
-                    </div>
-                  </div>
-                )}
-
-                {activeTab === 'incidents' && (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                      <span className="text-xs font-mono text-rose-400 font-bold">🚨 Incident Report</span>
-                      <span className="text-xs font-mono text-rose-300 font-extrabold uppercase">Severity: High</span>
-                    </div>
-                    <h4 className="text-lg font-bold text-white font-heading">
-                      Spring Data JPA @OneToMany FetchType.EAGER N+1 Memory Spike
-                    </h4>
-                    <p className="text-xs text-slate-300 font-sans leading-relaxed">
-                      Discovered high memory consumption when fetching nested entities. Workaround: Use @EntityGraph or JOIN FETCH query hints.
-                    </p>
-                    <div className="pt-2">
-                      <Link to="/community" className="px-4 py-2 rounded-xl bg-rose-500/20 text-rose-300 text-xs font-bold border border-rose-500/40 inline-flex items-center gap-1.5">
-                        <span>View Incident Details</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </Link>
-                    </div>
-                  </div>
-                )}
-
-                {activeTab === 'quiz' && (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                      <span className="text-xs font-mono text-cyan-400">Phase 1 Assessment</span>
-                      <span className="text-xs font-mono text-indigo-400">Timer: 00:45</span>
-                    </div>
-                    <h4 className="text-lg font-bold text-white font-heading">
-                      What mechanism is used to manage JVM Heap memory automatically in Java?
-                    </h4>
-                    <div className="space-y-2 pt-1">
-                      <div className="p-3 rounded-xl bg-indigo-500/20 border border-indigo-500/40 text-white text-xs font-mono">
-                        A. Garbage Collector (G1GC / ZGC)
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
         </div>
       </section>
 

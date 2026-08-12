@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import ERDiagramRenderer from '@/components/ERDiagramRenderer';
 import { 
   Code2, 
   Plus, 
@@ -9,6 +10,7 @@ import {
   Zap, 
   Layers, 
   Database,
+  Layout,
   CheckCircle2
 } from 'lucide-react';
 
@@ -22,6 +24,7 @@ interface FieldItem {
 export default function GeneratorPage() {
   const [targetType, setTargetType] = useState<'java' | 'mongoose' | 'sql'>('java');
   const [entityName, setEntityName] = useState('Product');
+  const [viewMode, setViewMode] = useState<'code' | 'diagram'>('code');
   const [fields, setFields] = useState<FieldItem[]>([
     { id: '1', name: 'title', type: 'String', isRequired: true },
     { id: '2', name: 'price', type: 'Double', isRequired: true },
@@ -98,7 +101,7 @@ export default function GeneratorPage() {
           Entity & <span className="gradient-text-indigo-cyan">Schema Generator</span>
         </h1>
         <p className="text-sm text-slate-400 font-light leading-relaxed">
-          Define entity attributes visually and instantly export production-ready Java Spring Boot Entities, Mongoose Schemas, or PostgreSQL DDL tables.
+          Define entity attributes visually and instantly export production-ready Java Spring Boot Entities, Mongoose Schemas, or visual ER diagrams.
         </p>
       </div>
 
@@ -196,26 +199,63 @@ export default function GeneratorPage() {
 
         </div>
 
-        {/* Right Column: Code Window Output */}
+        {/* Right Column: Code & Interactive ER Diagram Output */}
         <div className="lg:col-span-6 space-y-6">
-          <div className="glass-card rounded-3xl border border-indigo-500/40 shadow-2xl relative overflow-hidden bg-[#04070D]">
-            <div className="p-4 bg-slate-900 border-b border-white/10 flex items-center justify-between">
-              <span className="text-xs font-mono text-cyan-400 font-bold uppercase flex items-center gap-1.5">
-                <Terminal className="w-4 h-4" /> Output Generator ({targetType.toUpperCase()})
-              </span>
-              <button
-                onClick={handleCopy}
-                className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-white/10 text-slate-200 text-xs font-mono flex items-center gap-1.5 transition-colors"
-              >
-                {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-cyan-400" />}
-                <span>{copied ? 'Copied' : 'Copy Code'}</span>
-              </button>
-            </div>
+          
+          {/* View Mode Switcher */}
+          <div className="flex bg-slate-900 p-1.5 rounded-2xl border border-white/10">
+            <button
+              onClick={() => setViewMode('code')}
+              className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                viewMode === 'code'
+                  ? 'bg-indigo-600 text-white shadow-neon-indigo'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Terminal className="w-3.5 h-3.5" />
+              <span>💻 Source Code View</span>
+            </button>
 
-            <pre className="p-6 overflow-x-auto text-xs font-mono text-cyan-300 leading-relaxed min-h-[400px]">
-              {generatedCode}
-            </pre>
+            <button
+              onClick={() => setViewMode('diagram')}
+              className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                viewMode === 'diagram'
+                  ? 'bg-cyan-500/20 border border-cyan-400/50 text-cyan-300 shadow-neon-cyan'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Layout className="w-3.5 h-3.5 text-cyan-400" />
+              <span>📐 Visual ER Diagram</span>
+            </button>
           </div>
+
+          {viewMode === 'code' ? (
+            <div className="glass-card rounded-3xl border border-indigo-500/40 shadow-2xl relative overflow-hidden bg-[#04070D]">
+              <div className="p-4 bg-slate-900 border-b border-white/10 flex items-center justify-between">
+                <span className="text-xs font-mono text-cyan-400 font-bold uppercase flex items-center gap-1.5">
+                  <Terminal className="w-4 h-4" /> Output Generator ({targetType.toUpperCase()})
+                </span>
+                <button
+                  onClick={handleCopy}
+                  className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-white/10 text-slate-200 text-xs font-mono flex items-center gap-1.5 transition-colors"
+                >
+                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-cyan-400" />}
+                  <span>{copied ? 'Copied' : 'Copy Code'}</span>
+                </button>
+              </div>
+
+              <pre className="p-6 overflow-x-auto text-xs font-mono text-cyan-300 leading-relaxed min-h-[400px]">
+                {generatedCode}
+              </pre>
+            </div>
+          ) : (
+            <ERDiagramRenderer
+              entityName={entityName}
+              fields={fields}
+              targetType={targetType}
+            />
+          )}
+
         </div>
 
       </div>
